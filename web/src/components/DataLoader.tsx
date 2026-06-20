@@ -46,10 +46,23 @@ export function DataLoader() {
       <Button
         onClick={() => void loadProxy(activeSymbol)}
         disabled={loading || !hasProxy}
-        title={hasProxy ? undefined : 'Set VITE_PROXY_URL to enable'}
+        title={
+          hasProxy
+            ? `Fetch live daily candles for ${activeSymbol}`
+            : 'Live fetch is disabled — configure a data proxy to enable it'
+        }
       >
-        Fetch via Proxy
+        {hasProxy ? 'Fetch Live Data' : 'Fetch Live Data (setup needed)'}
       </Button>
+      {!hasProxy && (
+        <p className="text-[11px] leading-snug text-amber-500/90">
+          Live fetch is off. Deploy the data proxy and set{' '}
+          <code className="rounded bg-base-700 px-1">VITE_PROXY_URL</code> in{' '}
+          <code className="rounded bg-base-700 px-1">web/.env</code> to enable
+          it (see <code className="rounded bg-base-700 px-1">proxy/README.md</code>).
+          Meanwhile, upload a CSV.
+        </p>
+      )}
       <Button
         onClick={exportCsv}
         variant="ghost"
