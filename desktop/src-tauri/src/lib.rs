@@ -15,6 +15,15 @@ fn run_backtest(candles: Vec<Candle>, config: BacktestConfig) -> serde_json::Val
     serde_json::to_value(result).unwrap_or(serde_json::Value::Null)
 }
 
+/// Maps a frontend provider string to a [`Provider`]. Unknown values fall back
+/// to the modern `yfinance-rs` backend.
+fn parse_provider(provider: &str) -> Provider {
+    match provider.to_ascii_lowercase().as_str() {
+        "yahoo" | "legacy" | "legacyapi" => Provider::LegacyApi,
+        _ => Provider::YFinance,
+    }
+}
+
 /// Fetches live daily OHLCV history for `ticker` from a free Yahoo Finance
 /// backend, selectable at runtime. Exposed to the frontend as `fetch_history`.
 ///
@@ -23,10 +32,7 @@ fn run_backtest(candles: Vec<Candle>, config: BacktestConfig) -> serde_json::Val
 /// in the shared [`Candle`] shape the frontend already consumes.
 #[tauri::command]
 async fn fetch_history(ticker: String, provider: String) -> Result<Vec<Candle>, String> {
-    let provider = match provider.to_ascii_lowercase().as_str() {
-        "yahoo" | "legacy" | "legacyapi" => Provider::LegacyApi,
-        _ => Provider::YFinance,
-    };
+    let provider = parse_provider(&provider);
 
     let service = MarketDataService::new(provider).map_err(|e| e.to_string())?;
     let quotes = service
@@ -63,4 +69,34 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running Axiomic");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_provider_maps_known_strings() {
+        assert_eq!(parse_provider("yfinance"), Provider::YFinance);
+        assert_eq!(parse_provider("yahoo"), Provider::LegacyApi);
+        assert_eq!(parse_provider("legacy"), Provider::LegacyApi);
+        assert_eq!(parse_provider("LegacyApi"), Provider::LegacyApi);
+    }
+
+    #[test]
+    fn parse_provider_is_case_insensitive() {
+        assert_eq!(parse_provider("YFINANCE"), Provider::YFinance);
+        assert_eq!(parse_provider("Yahoo"), Provider::LegacyApi);
+    }
+
+    #[test]
+    fn parse_provider_defaults_to_yfinance_for_unknown() {
+        assert_eq!(parse_provider(""), Provider::YFinance);
+        assert_eq!(parse_provider("nasdaq"), Provider::YFinance);
+    }
+
+    #[test]
+    fn engine_version_is_non_empty() {
+        assert!(!engine_version().is_empty());
+    }
 }

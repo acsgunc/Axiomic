@@ -254,3 +254,62 @@ impl MarketDataService {
         self.client.fetch_history(ticker).await
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unified_quote_serde_round_trips() {
+        let q = UnifiedQuote {
+            timestamp: 1_704_067_200,
+            open: 10.0,
+            high: 12.5,
+            low: 9.25,
+            close: 11.75,
+            volume: 1_000_000.0,
+        };
+        let json = serde_json::to_string(&q).expect("serialize");
+        let back: UnifiedQuote = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(q, back);
+    }
+
+    #[test]
+    fn provider_serde_uses_named_variants() {
+        assert_eq!(
+            serde_json::to_string(&Provider::YFinance).unwrap(),
+            "\"YFinance\""
+        );
+        assert_eq!(
+            serde_json::to_string(&Provider::LegacyApi).unwrap(),
+            "\"LegacyApi\""
+        );
+        let p: Provider = serde_json::from_str("\"LegacyApi\"").unwrap();
+        assert_eq!(p, Provider::LegacyApi);
+    }
+
+    #[test]
+    fn build_client_succeeds_for_both_providers() {
+        // Construction must not require network access.
+        assert!(Provider::YFinance.build_client().is_ok());
+        assert!(Provider::LegacyApi.build_client().is_ok());
+    }
+
+    #[test]
+    fn service_reports_and_switches_provider() {
+        let mut svc = MarketDataService::new(Provider::YFinance).expect("construct");
+        assert_eq!(svc.provider(), Provider::YFinance);
+        svc.switch(Provider::LegacyApi).expect("switch");
+        assert_eq!(svc.provider(), Provider::LegacyApi);
+    }
+
+    #[test]
+    fn yfinance_client_window_override_is_applied() {
+        // Smoke test the builder path compiles and runs without network.
+        let client = YFinanceClient::new()
+            .expect("client")
+            .with_window(yfinance_rs::Range::M1, yfinance_rs::Interval::D1);
+        // Field is private; constructing without panic is the assertion here.
+        let _ = client;
+    }
+}
