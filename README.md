@@ -133,6 +133,24 @@ keep the initial load fast.
 The desktop shell reuses the exact same frontend (`web/dist`) and the shared
 `core` crate natively.
 
+**One-command launchers** (check prerequisites, build the WASM core, install
+deps, then run/build) — see [desktop/README.md](desktop/README.md) for full
+details:
+
+```powershell
+# Windows (PowerShell):
+desktop\scripts\run-desktop.ps1            # dev window
+desktop\scripts\run-desktop.ps1 -Mode build   # .msi / .exe installers
+```
+
+```bash
+# macOS / Linux:
+desktop/scripts/run-desktop.sh             # dev window
+desktop/scripts/run-desktop.sh build       # .dmg / .deb / .AppImage
+```
+
+**Or manually:**
+
 ```bash
 cd desktop
 pnpm install
@@ -145,8 +163,9 @@ pnpm build
 ```
 
 > First run compiles the Rust backend and downloads the system WebView — give it
-> a few minutes. See the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)
-> for platform-specific dependencies (WebView2 on Windows, `webkit2gtk` on Linux).
+> a few minutes. See [desktop/README.md](desktop/README.md) and the
+> [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for platform-
+> specific dependencies (WebView2 on Windows, `webkit2gtk` on Linux).
 
 The backend also exposes the shared engine over IPC (`run_backtest`,
 `engine_version`) as a demonstration of reusing `core` natively.

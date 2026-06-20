@@ -113,6 +113,9 @@ cd web && pnpm build && pnpm preview
 
 # Desktop (Tauri 2.0), reuses web frontend + core:
 cd desktop && pnpm install && pnpm dev   # or pnpm build
+# Or one-command launchers (build WASM + deps + run), see desktop/README.md:
+#   Windows:      desktop\scripts\run-desktop.ps1 [-Mode build] [-SkipWasm]
+#   macOS/Linux:  desktop/scripts/run-desktop.sh [build]   (SKIP_WASM=1 to skip)
 
 # Data proxy (Cloudflare Worker):
 cd proxy && pnpm install && npx wrangler secret put DATA_API_KEY && pnpm deploy
