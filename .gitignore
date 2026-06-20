@@ -1,0 +1,27 @@
+# Rust / Cargo
+/target
+**/target
+Cargo.lock
+
+# Node
+node_modules/
+**/node_modules/
+.pnpm-store/
+
+# Build output
+web/dist/
+desktop/src-tauri/gen/
+
+# WASM build artifacts (regenerated via `pnpm --dir web wasm`)
+web/src/wasm/
+
+# Env / secrets
+**/.env
+**/.env.local
+.dev.vars
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
+.wrangler/

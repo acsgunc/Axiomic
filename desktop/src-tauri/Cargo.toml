@@ -1,0 +1,25 @@
+[package]
+name = "axiomic-desktop"
+version = "0.1.0"
+description = "Axiomic desktop shell (Tauri 2.0), reusing the web frontend and Rust core."
+authors = ["Axiomic"]
+edition = "2021"
+
+[lib]
+name = "axiomic_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Reuse the shared analysis core natively (no WASM) so backtests can run in the
+# Rust backend if desired, sharing logic with the browser build.
+axiomic-core = { path = "../../core" }
+
+[features]
+# Default Tauri production build.
+custom-protocol = ["tauri/custom-protocol"]

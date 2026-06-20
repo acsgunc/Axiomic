@@ -1,0 +1,11 @@
+name = "axiomic-proxy"
+main = "src/worker.ts"
+compatibility_date = "2024-11-01"
+
+# Restrict which browser origins may call the proxy (optional).
+# Set to your deployed PWA origin in production.
+[vars]
+ALLOWED_ORIGINS = "*"
+
+# Set the upstream API key as a secret (NOT here):
+#   npx wrangler secret put DATA_API_KEY

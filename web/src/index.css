@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  @apply bg-base-900 text-slate-200 font-sans antialiased;
+}
+
+/* Thin, theme-consistent scrollbars. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #232d42 transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  @apply bg-base-600 rounded-full;
+}
