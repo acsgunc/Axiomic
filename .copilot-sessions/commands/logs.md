@@ -1,0 +1,541 @@
+# Session logs
+
+_Captured 2026-06-20T17:32:28.872Z — 44 commands._
+
+## Terminal commands
+
+### 1. Detect installed toolchain
+> Check available toolchain (Rust, wasm-pack, Node, pnpm) before scaffolding.
+
+```bash
+echo "--- rust ---"; rustc --version 2>&1; cargo --version 2>&1; echo "--- wasm ---"; wasm-pack --version 2>&1; rustup target list --installed 2>&1 | grep wasm; echo "--- node ---"; node --version 2>&1; npm --version 2>&1; echo "--- pnpm ---"; pnpm --version 2>&1
+```
+
+### 2. Detect npm/pnpm/wasm target
+> Check remaining toolchain pieces.
+
+```bash
+echo "wasm-target:"; rustup target list --installed 2>&1 | grep wasm; echo "npm:"; npm --version 2>&1; echo "pnpm:"; pnpm --version 2>&1; echo "wasmpack:"; which wasm-pack 2>&1
+```
+
+### 3. Install wasm toolchain
+> Install the wasm32 compilation target and wasm-pack (needed to build the Rust core to WASM).
+
+```bash
+rustup target add wasm32-unknown-unknown 2>&1 | tail -5; echo "=== installing wasm-pack ==="; cargo install wasm-pack 2>&1 | tail -5
+```
+
+### 4. Test core crate natively
+> Run native unit tests for the Rust core to validate indicators, csv, and backtest logic.
+
+```bash
+cd core && cargo test 2>&1 | tail -30
+```
+
+### 5. Build core to WASM
+> Compile the Rust core to WebAssembly with wasm-bindgen bindings, output into the web frontend's src/wasm folder.
+
+```bash
+cd core && wasm-pack build --release --target web --out-dir ../web/src/wasm --features wasm 2>&1 | tail -25
+```
+
+### 6. Build core to WASM
+> Build the Rust core to WASM (cwd was already inside core).
+
+```bash
+pwd; cd /d/cs/Devlop/A/Axiomic/core && wasm-pack build --release --target web --out-dir ../web/src/wasm --features wasm 2>&1 | tail -25
+```
+
+### 7. Clean wasm output gitignore
+> Remove the auto-generated .gitignore inside the wasm output (it would ignore the whole folder) and list final artifacts.
+
+```bash
+rm -f /d/cs/Devlop/A/Axiomic/web/src/wasm/.gitignore; ls -la /d/cs/Devlop/A/Axiomic/web/src/wasm/
+```
+
+### 8. Remove bad postcss config
+> Remove the incorrect postcss config file.
+
+```bash
+rm -f /d/cs/Devlop/A/Axiomic/web/postcss.config.cjs
+```
+
+### 9. Check Pillow availability
+> Check whether Pillow is available to generate PNG icons.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && python -c "import PIL; print('pillow ok')" 2>&1 | tail -1
+```
+
+### 10. Generate PWA PNG icons
+> Generate the 192px and 512px PWA icons using Pillow.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && python -c "
+from PIL import Image, ImageDraw
+def make(sz, path):
+    img = Image.new('RGBA', (sz, sz), (11,15,23,255))
+    d = ImageDraw.Draw(img)
+    # Axiomic 'A' triangle mark in accent blue, centered.
+    m = sz*0.18
+    apex = (sz/2, m)
+    bl = (m, sz-m)
+    br = (sz-m, sz-m)
+    d.polygon([apex, bl, br], fill=(59,130,246,255))
+    # inner cutout to form the 'A'
+    k = sz*0.07
+    apex2 = (sz/2, m + sz*0.16)
+    bl2 = (m + sz*0.13, sz-m-k)
+    br2 = (sz-m - sz*0.13, sz-m-k)
+    d.polygon([apex2, bl2, br2], fill=(11,15,23,255))
+    # crossbar
+    d.rectangle([sz*0.33, sz*0.60, sz*0.67, sz*0.66], fill=(59,130,246,255))
+    img.save(path)
+make(192, 'web/public/icon-192.png')
+make(512, 'web/public/icon-512.png')
+print('icons written')
+"
+```
+
+### 11. Install web dependencies
+> Install the web frontend's npm dependencies via pnpm.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic/web && pnpm install 2>&1 | tail -25
+```
+
+### 12. Typecheck web frontend
+> Run a TypeScript typecheck to surface any type errors before building.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic/web && pnpm exec tsc --noEmit 2>&1 | tail -40
+```
+
+### 13. Build web frontend
+> Run the full Vite production build to validate the app bundles correctly including WASM and PWA.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic/web && pnpm build 2>&1 | tail -35
+```
+
+### 14. Generate Tauri icons
+> Generate Tauri desktop icon assets (PNG, ICO, ICNS) referenced by tauri.conf.json.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && python -c "
+from PIL import Image, ImageDraw
+import os
+os.makedirs('desktop/src-tauri/icons', exist_ok=True)
+def base(sz):
+    img = Image.new('RGBA', (sz, sz), (11,15,23,255))
+    d = ImageDraw.Draw(img)
+    m = sz*0.18
+    d.polygon([(sz/2, m),(m, sz-m),(sz-m, sz-m)], fill=(59,130,246,255))
+    d.polygon([(sz/2, m+sz*0.16),(m+sz*0.13, sz-m-sz*0.07),(sz-m-sz*0.13, sz-m-sz*0.07)], fill=(11,15,23,255))
+    d.rectangle([sz*0.33, sz*0.60, sz*0.67, sz*0.66], fill=(59,130,246,255))
+    return img
+base(32).save('desktop/src-tauri/icons/32x32.png')
+base(128).save('desktop/src-tauri/icons/128x128.png')
+base(256).save('desktop/src-tauri/icons/128x128@2x.png')
+base(512).save('desktop/src-tauri/icons/icon.png')
+# Windows ICO with multiple sizes
+base(256).save('desktop/src-tauri/icons/icon.ico', sizes=[(16,16),(32,32),(48,48),(64,64),(128,128),(256,256)])
+# macOS icns (Pillow supports writing icns)
+base(512).save('desktop/src-tauri/icons/icon.icns')
+print('tauri icons written:', os.listdir('desktop/src-tauri/icons'))
+"
+```
+
+### 15. Create sample CSV
+> Generate a realistic sample OHLCV CSV in examples/ for testing CSV upload.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && python -c "
+import math, datetime
+seed=0
+for ch in 'AAPL': seed=(seed*31+ord(ch))&0xffffffff
+def rnd():
+    global seed
+    seed=(seed*1664525+1013904223)&0xffffffff
+    return seed/0xffffffff
+price=180.0
+days=260
+start=datetime.date.today()-datetime.timedelta(days=days)
+rows=['Date,Open,High,Low,Close,Volume']
+for i in range(days):
+    ret=0.0003+0.018*((rnd()-0.5)*2)
+    o=price; c=max(1,o*(1+ret))
+    h=max(o,c)*(1+rnd()*0.01); l=min(o,c)*(1-rnd()*0.01)
+    v=int(500000+rnd()*2000000)
+    d=start+datetime.timedelta(days=i)
+    rows.append(f'{d.isoformat()},{round(o,2)},{round(h,2)},{round(l,2)},{round(c,2)},{v}')
+    price=c
+open('examples/AAPL-sample.csv','w').write(chr(10).join(rows)+chr(10))
+print('wrote examples/AAPL-sample.csv with', days, 'rows')
+" 2>&1; mkdir -p examples 2>/dev/null; ls examples 2>/dev/null
+```
+
+### 16. Create sample CSV
+> Create examples dir and generate the sample CSV, then preview it.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && mkdir -p examples && python -c "
+import datetime
+seed=0
+for ch in 'AAPL': seed=(seed*31+ord(ch))&0xffffffff
+def rnd():
+    global seed
+    seed=(seed*1664525+1013904223)&0xffffffff
+    return seed/0xffffffff
+price=180.0; days=260
+start=datetime.date.today()-datetime.timedelta(days=days)
+rows=['Date,Open,High,Low,Close,Volume']
+for i in range(days):
+    ret=0.0003+0.018*((rnd()-0.5)*2)
+    o=price; c=max(1,o*(1+ret))
+    h=max(o,c)*(1+rnd()*0.01); l=min(o,c)*(1-rnd()*0.01)
+    v=int(500000+rnd()*2000000)
+    d=start+datetime.timedelta(days=i)
+    rows.append(f'{d.isoformat()},{round(o,2)},{round(h,2)},{round(l,2)},{round(c,2)},{v}')
+    price=c
+open('examples/AAPL-sample.csv','w').write(chr(10).join(rows)+chr(10))
+print('wrote', days, 'rows')
+"; head -4 examples/AAPL-sample.csv
+```
+
+### 17. Start dev server
+> Start the Vite dev server in the background to validate the running app in a browser.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic/web && pnpm dev 2>&1 | head -20
+```
+
+### 18. Final web build verification
+> Run the production build again to confirm the store refactor typechecks and builds cleanly.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic/web && pnpm build 2>&1 | tail -20
+```
+
+### 19. Verify rebuild script
+> Run the bundled rebuild-wasm.sh script to verify it correctly builds the core and stages the WASM output.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && chmod +x .github/skills/axiomic-dev/scripts/rebuild-wasm.sh && bash .github/skills/axiomic-dev/scripts/rebuild-wasm.sh 2>&1 | tail -15
+```
+
+### 20. Re-run rebuild script with exit code
+> Re-run the script capturing full output and exit code.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && bash .github/skills/axiomic-dev/scripts/rebuild-wasm.sh; echo "EXIT=$?"
+```
+
+### 21. Inspect debug-logs structure
+> Inspect the Copilot debug-logs directory to learn whether the session entry is a file or folder and the file naming.
+
+```bash
+ls -la "/c/Users/H300133/AppData/Roaming/Code - Insiders/User/workspaceStorage/8a714d6fc35a80f9676c1061ed50311a/GitHub.copilot-chat/debug-logs/" 2>&1 | head -20; echo "--- target session entry ---"; ls -la "/c/Users/H300133/AppData/Roaming/Code - Insiders/User/workspaceStorage/8a714d6fc35a80f9676c1061ed50311a/GitHub.copilot-chat/debug-logs/9d3f957f-0a5b-4502-92b8-a001d2f610f2" 2>&1 | head
+```
+
+### 22. Understand JSONL schema
+> Examine the JSONL line schema and confirm terminal tool calls are present so the extractor can parse them.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && LOG="/c/Users/H300133/AppData/Roaming/Code - Insiders/User/workspaceStorage/8a714d6fc35a80f9676c1061ed50311a/GitHub.copilot-chat/debug-logs/9d3f957f-0a5b-4502-92b8-a001d2f610f2/main.jsonl"; echo "lines: $(wc -l < "$LOG")"; echo "--- keys on first line ---"; head -1 "$LOG" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const o=JSON.parse(s);console.log(Object.keys(o))}catch(e){console.log("parse err",e.message)}})'; echo "--- grep run_in_terminal occurrences ---"; grep -c "run_in_terminal" "$LOG"
+```
+
+### 23. Profile JSONL keys and sample
+> Aggregate top-level keys and print a sample run_in_terminal line to design the command extractor.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && LOG="/c/Users/H300133/AppData/Roaming/Code - Insiders/User/workspaceStorage/8a714d6fc35a80f9676c1061ed50311a/GitHub.copilot-chat/debug-logs/9d3f957f-0a5b-4502-92b8-a001d2f610f2/main.jsonl"; node -e '
+const fs=require("fs");
+const lines=fs.readFileSync(process.argv[1],"utf8").split(/\r?\n/).filter(Boolean);
+const keyCount={};
+let sampleTerminal=null;
+for(const l of lines){let o;try{o=JSON.parse(l)}catch{continue}
+  for(const k of Object.keys(o)) keyCount[k]=(keyCount[k]||0)+1;
+}
+console.log("top-level keys:",keyCount);
+// find a line mentioning run_in_terminal and show its structure shallowly
+for(const l of lines){ if(l.includes("run_in_terminal")){ const o=JSON.parse(l); console.log("\nsample line keys:",Object.keys(o)); console.log(JSON.stringify(o).slice(0,600)); break; } }
+' "$LOG"
+```
+
+### 24. List span names
+> List distinct span names to find the cleanest source for tool-call extraction.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && LOG="/c/Users/H300133/AppData/Roaming/Code - Insiders/User/workspaceStorage/8a714d6fc35a80f9676c1061ed50311a/GitHub.copilot-chat/debug-logs/9d3f957f-0a5b-4502-92b8-a001d2f610f2/main.jsonl"; node -e '
+const fs=require("fs");
+const lines=fs.readFileSync(process.argv[1],"utf8").split(/\r?\n/).filter(Boolean);
+const names={};
+for(const l of lines){let o;try{o=JSON.parse(l)}catch{continue} names[o.name]=(names[o.name]||0)+1;}
+console.log("span names:",names);
+' "$LOG"
+```
+
+### 25. Inspect terminal span attrs
+> Inspect a run_in_terminal span's attrs to find the command/explanation fields.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && LOG="/c/Users/H300133/AppData/Roaming/Code - Insiders/User/workspaceStorage/8a714d6fc35a80f9676c1061ed50311a/GitHub.copilot-chat/debug-logs/9d3f957f-0a5b-4502-92b8-a001d2f610f2/main.jsonl"; node -e '
+const fs=require("fs");
+const lines=fs.readFileSync(process.argv[1],"utf8").split(/\r?\n/).filter(Boolean);
+for(const l of lines){let o;try{o=JSON.parse(l)}catch{continue}
+  if(o.name==="run_in_terminal"){ console.log("attrs keys:",Object.keys(o.attrs||{})); console.log(JSON.stringify(o.attrs).slice(0,800)); break; }
+}
+' "$LOG"
+```
+
+### 26. Test session-keeper script
+> Run the Session Keeper script against the current live session log to validate copy + extraction.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && VSCODE_TARGET_SESSION_LOG="/c/Users/H300133/AppData/Roaming/Code - Insiders/User/workspaceStorage/8a714d6fc35a80f9676c1061ed50311a/GitHub.copilot-chat/debug-logs/9d3f957f-0a5b-4502-92b8-a001d2f610f2" node ./.github/skills/session-keeper/scripts/keep-session.mjs; echo; echo "EXIT=$?"
+```
+
+### 27. Verify generated artifacts
+> Inspect the generated session artifacts (shell script, markdown, gitignore, copied log) to confirm correctness.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && echo "=== tree ==="; find .copilot-sessions -type f | sort; echo; echo "=== .sh head ==="; head -25 .copilot-sessions/commands/*.sh; echo; echo "=== .md head ==="; head -20 .copilot-sessions/commands/*.md; echo; echo "=== gitignore ==="; cat .copilot-sessions/.gitignore; echo "=== log size ==="; du -h .copilot-sessions/logs/*.jsonl
+```
+
+### 28. Test fallback detection
+> Test the fallback auto-detection (no env var, empty stdin) that the Stop hook uses.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && echo '{}' | node ./.github/skills/session-keeper/scripts/keep-session.mjs; echo; echo "EXIT=$?"
+```
+
+### 29. Confirm fallback output
+> Run with empty stdin and capture stdout/stderr separately to confirm the JSON result is emitted by the fallback path.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && node ./.github/skills/session-keeper/scripts/keep-session.mjs < /dev/null > /tmp/sk-out.json 2>/tmp/sk-err.txt; echo "EXIT=$?"; echo "--- stdout ---"; cat /tmp/sk-out.json; echo; echo "--- stderr ---"; cat /tmp/sk-err.txt
+```
+
+### 30. Simulate real hook invocation
+> Spawn the hook script from Node with a clean piped stdin (mimicking the real hook runtime) and capture exit code and output.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && node -e '
+const { spawn } = require("child_process");
+const p = spawn(process.execPath, ["./.github/skills/session-keeper/scripts/keep-session.mjs"], { stdio: ["pipe","pipe","pipe"] });
+let out="",err="";
+p.stdout.on("data",d=>out+=d); p.stderr.on("data",d=>err+=d);
+p.on("close",code=>{ console.log("EXIT="+code); console.log("STDOUT="+out); console.log("STDERR="+err); });
+p.stdin.write(JSON.stringify({ sessionId: "9d3f957f-0a5b-4502-92b8-a001d2f610f2", cwd: process.cwd() }));
+p.stdin.end();
+'
+```
+
+### 31. Validate hook JSON and list files
+> Validate the hook JSON is well-formed and list the newly created files.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && node -e 'JSON.parse(require("fs").readFileSync(".github/hooks/session-keeper.json","utf8")); console.log("hook JSON valid")' && echo "--- new files ---" && find .github/hooks .github/skills/session-keeper -type f | sort
+```
+
+### 32. Detect thinking content in log
+> Scan the captured JSONL for thinking/reasoning part types to determine if reasoning is present.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && LOG=".copilot-sessions/logs/9d3f957f-0a5b-4502-92b8-a001d2f610f2.jsonl"; node -e '
+const fs=require("fs");
+const lines=fs.readFileSync(process.argv[1],"utf8").split(/\r?\n/).filter(Boolean);
+const partTypes={};
+let sampleThinking=null;
+for(const l of lines){let o;try{o=JSON.parse(l)}catch{continue}
+  if(o.name!=="agent_response") continue;
+  const resp=(()=>{try{return JSON.parse(o.attrs.response)}catch{return null}})();
+  if(!Array.isArray(resp)) continue;
+  for(const msg of resp){ if(!msg||!Array.isArray(msg.parts)) continue;
+    for(const p of msg.parts){ partTypes[p.type]=(partTypes[p.type]||0)+1;
+      if(!sampleThinking && /think|reason/i.test(p.type)){ sampleThinking=p; }
+    }
+  }
+}
+console.log("part types across agent_response:",partTypes);
+if(sampleThinking) console.log("\nsample thinking part:\n",JSON.stringify(sampleThinking).slice(0,500));
+else console.log("\nNo thinking/reasoning part type found.");
+' "$LOG"
+```
+
+### 33. Search for thinking keywords
+> Search the raw log for any thinking/reasoning keywords and enumerate span types.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && LOG=".copilot-sessions/logs/9d3f957f-0a5b-4502-92b8-a001d2f610f2.jsonl"; echo "=== raw keyword hits ==="; grep -o -iE '"(thinking|reasoning|thought|redacted_thinking|reasoning_content)"' "$LOG" | sort | uniq -c; echo "=== any 'think' substring count ==="; grep -ic "think" "$LOG"; echo "=== span types ==="; node -e '
+const fs=require("fs");const lines=fs.readFileSync(process.argv[1],"utf8").split(/\r?\n/).filter(Boolean);
+const types={};for(const l of lines){let o;try{o=JSON.parse(l)}catch{continue}types[o.type]=(types[o.type]||0)+1;}
+console.log(types);
+' "$LOG"
+```
+
+### 34. Locate reasoning field context
+> Locate which span types contain reasoning and show surrounding context to understand the field meaning.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && LOG=".copilot-sessions/logs/9d3f957f-0a5b-4502-92b8-a001d2f610f2.jsonl"; node -e '
+const fs=require("fs");const lines=fs.readFileSync(process.argv[1],"utf8").split(/\r?\n/).filter(Boolean);
+const byType={};
+for(const l of lines){ if(!/reasoning/i.test(l)) continue; let o;try{o=JSON.parse(l)}catch{continue}
+  byType[o.type]=(byType[o.type]||0)+1;
+}
+console.log("spans containing \"reasoning\" by type:",byType);
+// Show a redacted snippet of where reasoning appears in an llm_request and agent_response
+function show(type){
+  for(const l of lines){ if(!/reasoning/i.test(l)) continue; let o;try{o=JSON.parse(l)}catch{continue}
+    if(o.type!==type) continue;
+    const i=l.toLowerCase().indexOf("reasoning");
+    console.log("\n["+type+"] context:\n"+l.slice(Math.max(0,i-80), i+220));
+    return;
+  }
+}
+show("llm_request"); show("agent_response");
+' "$LOG"
+```
+
+### 35. Verify reasoning attr shape
+> Confirm agent_response attrs.reasoning is a plain string and count how many have it.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && LOG=".copilot-sessions/logs/9d3f957f-0a5b-4502-92b8-a001d2f610f2.jsonl"; node -e '
+const fs=require("fs");const lines=fs.readFileSync(process.argv[1],"utf8").split(/\r?\n/).filter(Boolean);
+let n=0;
+for(const l of lines){let o;try{o=JSON.parse(l)}catch{continue}
+  if(o.type!=="agent_response") continue;
+  const a=o.attrs||{};
+  if(typeof a.reasoning==="string" && a.reasoning.trim()){
+    n++;
+    if(n<=2){ console.log("attrs keys:",Object.keys(a)); console.log("reasoning len:",a.reasoning.length); console.log("snippet:",a.reasoning.slice(0,140).replace(/\n/g," ")); console.log("---"); }
+  }
+}
+console.log("total agent_response spans with reasoning:",n);
+' "$LOG"
+```
+
+### 36. Test thinking extraction
+> Run the updated Session Keeper and inspect the generated thinking markdown.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && VSCODE_TARGET_SESSION_LOG="/c/Users/H300133/AppData/Roaming/Code - Insiders/User/workspaceStorage/8a714d6fc35a80f9676c1061ed50311a/GitHub.copilot-chat/debug-logs/9d3f957f-0a5b-4502-92b8-a001d2f610f2" node ./.github/skills/session-keeper/scripts/keep-session.mjs; echo; echo "EXIT=$?"; echo "--- thinking file head ---"; head -30 .copilot-sessions/thinking/*.md
+```
+
+### 37. Final hook simulation
+> Syntax-check the script and run it via a clean piped-stdin spawn to mimic the real Stop hook, then list outputs.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && node --check ./.github/skills/session-keeper/scripts/keep-session.mjs && echo "syntax OK" && node -e '
+const { spawn } = require("child_process");
+const env = { ...process.env, VSCODE_TARGET_SESSION_LOG: "C:/Users/H300133/AppData/Roaming/Code - Insiders/User/workspaceStorage/8a714d6fc35a80f9676c1061ed50311a/GitHub.copilot-chat/debug-logs/9d3f957f-0a5b-4502-92b8-a001d2f610f2" };
+const p = spawn(process.execPath, ["./.github/skills/session-keeper/scripts/keep-session.mjs"], { stdio:["pipe","pipe","pipe"], env });
+let out="",err=""; p.stdout.on("data",d=>out+=d); p.stderr.on("data",d=>err+=d);
+p.on("close",c=>{console.log("EXIT="+c);console.log(out);if(err)console.log("ERR:"+err);});
+p.stdin.write("{}"); p.stdin.end();
+'; echo "--- outputs ---"; ls -1 .copilot-sessions/thinking .copilot-sessions/commands
+```
+
+### 38. Verify skill structure
+> List the axiomic-dev skill files and confirm the new reference doc exists.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && find .github/skills/axiomic-dev -type f | sort && echo "--- doc size ---" && wc -l .github/skills/axiomic-dev/references/architecture.md
+```
+
+### 39. Inspect desktop layout
+> List desktop files and view its package.json to align scripts with existing tasks.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && find desktop -type f -not -path '*/target/*' -not -path '*/node_modules/*' | sort; echo "--- pnpm/tauri ---"; cat desktop/package.json
+```
+
+### 40. Validate script syntax
+> Validate bash and PowerShell script syntax without executing the build steps.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && echo "=== bash syntax ==="; bash -n desktop/scripts/run-desktop.sh && echo "bash OK"; chmod +x desktop/scripts/run-desktop.sh; echo "=== powershell syntax ==="; pwsh -NoProfile -Command "\$ErrorActionPreference='Stop'; \$null=[System.Management.Automation.Language.Parser]::ParseFile('desktop/scripts/run-desktop.ps1',[ref]\$null,[ref]\$null); if(\$?){'pwsh parse OK'}" 2>&1 | tail -5
+```
+
+### 41. Strict PowerShell parse check
+> Strictly check the PowerShell script for parse errors via the error ref output.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && pwsh -NoProfile -Command "\$e=\$null; \$t=\$null; [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'desktop/scripts/run-desktop.ps1'),[ref]\$t,[ref]\$e) | Out-Null; if(\$e -and \$e.Count){ \$e | ForEach-Object { Write-Host \$_.Message } ; exit 1 } else { 'No parse errors' }" 2>&1 | tail -10
+```
+
+### 42. Launch desktop dev build
+> Run the Windows desktop dev launcher (skipping WASM rebuild since it's already built) to confirm prerequisites pass and the Tauri app compiles and launches.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && pwsh -NoProfile -ExecutionPolicy Bypass -File desktop/scripts/run-desktop.ps1 -SkipWasm 2>&1 | tee /tmp/desktop-run.log
+```
+
+### 43. Relaunch desktop dev build
+> Re-run the desktop dev launcher after fixing the beforeDevCommand path; the Tauri Rust backend will compile on first run.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && pwsh -NoProfile -ExecutionPolicy Bypass -File desktop/scripts/run-desktop.ps1 -SkipWasm 2>&1 | tee /tmp/desktop-run2.log
+```
+
+### 44. Check build progress
+> Check the launcher log and whether the Tauri Rust build has started producing artifacts.
+
+```bash
+cd /d/cs/Devlop/A/Axiomic && tail -20 /tmp/desktop-run2.log 2>/dev/null; echo "---- cargo build dir activity ----"; ls -la desktop/src-tauri/target/debug/ 2>/dev/null | head -5 || echo "no target yet"
+```
+
+## Files created / edited
+
+- create_file: d:\cs\Devlop\A\Axiomic\core\Cargo.toml
+- create_file: d:\cs\Devlop\A\Axiomic\core\src\types.rs
+- create_file: d:\cs\Devlop\A\Axiomic\core\src\lib.rs
+- create_file: d:\cs\Devlop\A\Axiomic\web\package.json
+- create_file: d:\cs\Devlop\A\Axiomic\web\vite.config.ts
+- create_file: d:\cs\Devlop\A\Axiomic\web\tsconfig.json
+- create_file: d:\cs\Devlop\A\Axiomic\web\postcss.config.cjs
+- create_file: d:\cs\Devlop\A\Axiomic\web\postcss.config.js
+- create_file: d:\cs\Devlop\A\Axiomic\web\tailwind.config.js
+- create_file: d:\cs\Devlop\A\Axiomic\web\index.html
+- create_file: d:\cs\Devlop\A\Axiomic\web\src\index.css
+- create_file: d:\cs\Devlop\A\Axiomic\web\src\types.ts
+- create_file: d:\cs\Devlop\A\Axiomic\web\src\engine.ts
+- create_file: d:\cs\Devlop\A\Axiomic\web\src\lib\utils.ts
+- create_file: d:\cs\Devlop\A\Axiomic\web\src\lib\sampleData.ts
+- create_file: d:\cs\Devlop\A\Axiomic\web\src\lib\dataProvider.ts
+- create_file: d:\cs\Devlop\A\Axiomic\web\src\components\ui.tsx
+- create_file: d:\cs\Devlop\A\Axiomic\web\src\components\Watchlist.tsx
+- create_file: d:\cs\Devlop\A\Axiomic\web\src\components\IndicatorPanel.tsx
+- create_file: d:\cs\Devlop\A\Axiomic\web\src\components\DataLoader.tsx
+- create_file: d:\cs\Devlop\A\Axiomic\web\src\main.tsx
+- create_file: d:\cs\Devlop\A\Axiomic\web\public\favicon.svg
+- create_file: d:\cs\Devlop\A\Axiomic\web\src\vite-env.d.ts
+- create_file: d:\cs\Devlop\A\Axiomic\web\.env.example
+- create_file: d:\cs\Devlop\A\Axiomic\desktop\src-tauri\tauri.conf.json
+- create_file: d:\cs\Devlop\A\Axiomic\desktop\src-tauri\Cargo.toml
+- create_file: d:\cs\Devlop\A\Axiomic\desktop\src-tauri\build.rs
+- create_file: d:\cs\Devlop\A\Axiomic\desktop\src-tauri\src\lib.rs
+- create_file: d:\cs\Devlop\A\Axiomic\desktop\src-tauri\src\main.rs
+- create_file: d:\cs\Devlop\A\Axiomic\desktop\src-tauri\capabilities\default.json
+- create_file: d:\cs\Devlop\A\Axiomic\desktop\package.json
+- create_file: d:\cs\Devlop\A\Axiomic\proxy\src\worker.ts
+- create_file: d:\cs\Devlop\A\Axiomic\proxy\wrangler.toml
+- create_file: d:\cs\Devlop\A\Axiomic\proxy\package.json
+- create_file: d:\cs\Devlop\A\Axiomic\proxy\tsconfig.json
+- create_file: d:\cs\Devlop\A\Axiomic\proxy\README.md
+- create_file: d:\cs\Devlop\A\Axiomic\pnpm-workspace.yaml
+- create_file: d:\cs\Devlop\A\Axiomic\.gitignore
+- replace_string_in_file: d:\cs\Devlop\A\Axiomic\web\src\store\useStore.ts
+- create_file: d:\cs\Devlop\A\Axiomic\.github\skills\axiomic-dev\scripts\rebuild-wasm.sh
+- create_file: d:\cs\Devlop\A\Axiomic\.github\hooks\session-keeper.json
+- create_file: d:\cs\Devlop\A\Axiomic\.github\skills\session-keeper\SKILL.md
+- replace_string_in_file: d:\cs\Devlop\A\Axiomic\.github\skills\session-keeper\scripts\keep-session.mjs
+- replace_string_in_file: d:\cs\Devlop\A\Axiomic\.github\skills\session-keeper\SKILL.md
+- replace_string_in_file: d:\cs\Devlop\A\Axiomic\.github\skills\axiomic-dev\SKILL.md
+- create_file: d:\cs\Devlop\A\Axiomic\desktop\scripts\run-desktop.ps1
+- create_file: d:\cs\Devlop\A\Axiomic\desktop\scripts\run-desktop.sh
+- replace_string_in_file: d:\cs\Devlop\A\Axiomic\desktop\src-tauri\tauri.conf.json
+- replace_string_in_file: d:\cs\Devlop\A\Axiomic\README.md

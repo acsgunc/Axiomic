@@ -8,6 +8,9 @@
  *   3. Extracts every terminal command run during the session into a runnable
  *      `<workspace>/.copilot-sessions/commands/<session>.sh` plus a human-
  *      readable `commands.md`, and lists files the agent created/edited.
+ *   4. Writes a human-readable `summary/<session>.md` overview: the user's
+ *      prompts/requests, models used, tool-usage breakdown, token totals, files
+ *      touched, and links to the other artifacts.
  *
  * It is intentionally defensive: any failure is swallowed and reported via the
  * hook's JSON output so it can never break a chat session.
@@ -43,17 +46,28 @@ async function main() {
     const logsDir = path.join(outRoot, 'logs');
     const cmdDir = path.join(outRoot, 'commands');
     const thinkDir = path.join(outRoot, 'thinking');
+    const summaryDir = path.join(outRoot, 'summary');
     fs.mkdirSync(logsDir, { recursive: true });
     fs.mkdirSync(cmdDir, { recursive: true });
     fs.mkdirSync(thinkDir, { recursive: true });
+    fs.mkdirSync(summaryDir, { recursive: true });
 
     // 1. Copy the raw JSONL log (latest snapshot for this session).
     const logCopy = path.join(logsDir, `${sessionId}.jsonl`);
     fs.copyFileSync(logFile, logCopy);
     notes.push(`log → ${rel(workspace, logCopy)}`);
 
-    // 2. Parse and extract commands, thinking, and touched files.
-    const { commands, thoughts, files } = parseSession(logFile);
+    // 2. Parse and extract commands, thinking, touched files, and metadata.
+    const session = parseSession(logFile);
+    const { commands, thoughts, files } = session;
+
+    // 2a. Always write a session summary (the high-level overview).
+    writeSummaryMarkdown(
+      path.join(summaryDir, `${sessionId}.md`),
+      sessionId,
+      session,
+    );
+    notes.push(`summary → ${rel(workspace, summaryDir)}`);
 
     if (commands.length) {
       writeShellScript(path.join(cmdDir, `${sessionId}.sh`), sessionId, commands);
@@ -176,8 +190,15 @@ function parseSession(logFile) {
   const commands = [];
   const thoughts = [];
   const files = new Set();
+  const prompts = [];
+  const toolCounts = new Map();
+  const models = new Map(); // model -> { calls, inputTokens, outputTokens }
+  const meta = { copilotVersion: '', vscodeVersion: '', title: '' };
   const seenCmd = new Set();
   const seenThought = new Set();
+  let firstTs = 0;
+  let lastTs = 0;
+  let toolCallTotal = 0;
 
   for (const line of lines) {
     if (!line.trim()) continue;
@@ -190,6 +211,46 @@ function parseSession(logFile) {
     const name = span.name;
     const type = span.type;
     const attrs = span.attrs || {};
+    if (span.ts) {
+      if (!firstTs || span.ts < firstTs) firstTs = span.ts;
+      if (span.ts > lastTs) lastTs = span.ts;
+    }
+
+    if (type === 'session_start') {
+      if (attrs.copilotVersion) meta.copilotVersion = attrs.copilotVersion;
+      if (attrs.vscodeVersion) meta.vscodeVersion = attrs.vscodeVersion;
+    }
+    if (name === 'title' && attrs.label && attrs.label !== 'title') {
+      meta.title = attrs.label;
+    }
+
+    if (type === 'user_message' && typeof attrs.content === 'string') {
+      const content = attrs.content.trim();
+      // Skip auto-injected continuations (terminal-result notifications and the
+      // "Continue to iterate?" auto-prompts) so only real user input is listed.
+      const injected =
+        content.startsWith('[Terminal ') ||
+        /^Continue: /.test(content) ||
+        content.startsWith('<reminderInstructions>');
+      if (content && !injected) prompts.push({ content, ts: span.ts || 0 });
+    }
+
+    if (type === 'tool_call') {
+      toolCallTotal++;
+      toolCounts.set(name, (toolCounts.get(name) || 0) + 1);
+    }
+
+    if (type === 'llm_request' && attrs.model) {
+      const m = models.get(attrs.model) || {
+        calls: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+      };
+      m.calls++;
+      m.inputTokens += Number(attrs.inputTokens) || 0;
+      m.outputTokens += Number(attrs.outputTokens) || 0;
+      models.set(attrs.model, m);
+    }
 
     if (name === 'run_in_terminal') {
       const args = safeJson(attrs.args);
@@ -234,7 +295,19 @@ function parseSession(logFile) {
 
   commands.sort((a, b) => a.ts - b.ts);
   thoughts.sort((a, b) => a.ts - b.ts);
-  return { commands, thoughts, files: [...files] };
+  prompts.sort((a, b) => a.ts - b.ts);
+  return {
+    commands,
+    thoughts,
+    files: [...files],
+    prompts,
+    toolCounts: [...toolCounts.entries()].sort((a, b) => b[1] - a[1]),
+    models: [...models.entries()],
+    meta,
+    firstTs,
+    lastTs,
+    toolCallTotal,
+  };
 }
 
 /** Pulls the first visible assistant text part from an `attrs.response` blob. */
@@ -255,6 +328,119 @@ function firstAssistantText(response) {
 // ---------------------------------------------------------------------------
 // Output writers
 // ---------------------------------------------------------------------------
+
+/**
+ * Writes the high-level session summary: the user's prompts/requests, models
+ * used, tool-usage breakdown, token totals, touched files, and links to the
+ * other captured artifacts.
+ */
+function writeSummaryMarkdown(file, sessionId, s) {
+  const { commands, thoughts, files, prompts, toolCounts, models, meta } = s;
+  const out = [];
+
+  out.push(`# Session summary — ${sessionId}`);
+  out.push('');
+  if (meta.title) out.push(`**Title:** ${meta.title}`);
+  const started = s.firstTs ? new Date(s.firstTs).toISOString() : 'unknown';
+  const ended = s.lastTs ? new Date(s.lastTs).toISOString() : 'unknown';
+  out.push(`**Started:** ${started}  ·  **Ended:** ${ended}`);
+  if (s.firstTs && s.lastTs) {
+    out.push(`**Duration:** ${formatDuration(s.lastTs - s.firstTs)}`);
+  }
+  if (meta.copilotVersion || meta.vscodeVersion) {
+    out.push(
+      `**Environment:** Copilot ${meta.copilotVersion || '?'} · VS Code ${
+        meta.vscodeVersion || '?'
+      }`,
+    );
+  }
+  out.push('');
+
+  // At-a-glance counts.
+  out.push('## At a glance');
+  out.push('');
+  out.push('| Metric | Count |');
+  out.push('| --- | --- |');
+  out.push(`| User prompts | ${prompts.length} |`);
+  out.push(`| Tool calls | ${s.toolCallTotal} |`);
+  out.push(`| Terminal commands | ${commands.length} |`);
+  out.push(`| Files created/edited | ${files.length} |`);
+  out.push(`| Thinking blocks | ${thoughts.length} |`);
+  out.push('');
+
+  // The user's prompts/requests — the actual "chat summary".
+  out.push('## User prompts');
+  out.push('');
+  if (prompts.length) {
+    prompts.forEach((p, i) => {
+      out.push(`### ${i + 1}.${p.ts ? ` (${new Date(p.ts).toISOString()})` : ''}`);
+      out.push('');
+      out.push('> ' + truncate(collapse(p.content), 600).replace(/\n/g, '\n> '));
+      out.push('');
+    });
+  } else {
+    out.push('_No user prompts captured._');
+    out.push('');
+  }
+
+  // Models used.
+  if (models.length) {
+    out.push('## Models used');
+    out.push('');
+    out.push('| Model | Requests | Input tokens | Output tokens |');
+    out.push('| --- | --: | --: | --: |');
+    for (const [name, m] of models) {
+      out.push(
+        `| ${name} | ${m.calls} | ${m.inputTokens.toLocaleString()} | ${m.outputTokens.toLocaleString()} |`,
+      );
+    }
+    out.push('');
+  }
+
+  // Tool usage breakdown.
+  if (toolCounts.length) {
+    out.push('## Tool usage');
+    out.push('');
+    out.push('| Tool | Calls |');
+    out.push('| --- | --: |');
+    for (const [name, n] of toolCounts) out.push(`| ${name} | ${n} |`);
+    out.push('');
+  }
+
+  // Files touched.
+  if (files.length) {
+    out.push('## Files created / edited');
+    out.push('');
+    for (const f of files) out.push(`- ${f}`);
+    out.push('');
+  }
+
+  // Cross-links to the other artifacts.
+  out.push('## Related artifacts');
+  out.push('');
+  out.push(`- Raw log: \`logs/${sessionId}.jsonl\``);
+  if (commands.length) {
+    out.push(`- Commands: \`commands/${sessionId}.sh\` · \`commands/${sessionId}.md\``);
+  }
+  if (thoughts.length) out.push(`- Thinking: \`thinking/${sessionId}.md\``);
+  out.push('');
+
+  fs.writeFileSync(file, out.join('\n'), 'utf8');
+}
+
+function formatDuration(ms) {
+  const s = Math.round(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ${s % 60}s`;
+  const h = Math.floor(m / 60);
+  return `${h}h ${m % 60}m`;
+}
+
+/** Collapses excessive blank lines so prompts quote cleanly. */
+function collapse(text) {
+  return String(text).replace(/\n{3,}/g, '\n\n').trim();
+}
 
 function writeShellScript(file, sessionId, commands) {
   const header = [
