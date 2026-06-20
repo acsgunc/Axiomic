@@ -1,0 +1,31 @@
+[package]
+name = "axiomic-data"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.91"
+description = "Pluggable market-data fetching for Axiomic: swap between yfinance-rs and yahoo_finance_api behind one trait."
+license = "MIT"
+
+# Native-only crate. It intentionally lives outside the WASM `core` crate because
+# yfinance-rs / yahoo_finance_api pull in tokio + reqwest, which do not target
+# wasm32-unknown-unknown. Keep all networked data fetching here.
+
+[dependencies]
+# Async runtime + object-safe async trait methods.
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+async-trait = "0.1"
+
+# Serialization for the unified model.
+serde = { version = "1", features = ["derive"] }
+
+# The two interchangeable Yahoo Finance backends.
+yfinance-rs = "0.9"
+yahoo_finance_api = "4"
+
+[[bin]]
+name = "axiomic-data-demo"
+path = "src/main.rs"
+
+[lib]
+name = "axiomic_data"
+path = "src/lib.rs"
