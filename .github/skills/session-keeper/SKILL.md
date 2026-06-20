@@ -1,7 +1,7 @@
 ---
 name: session-keeper
-description: 'Capture Copilot chat session artifacts into the workspace: copy the raw debug JSONL log and extract every terminal command, the agent''s thinking/reasoning, and created/edited files into runnable scripts and readable notes. USE WHEN: the user wants to keep/save the commands or scripts run during a chat session; save/copy the agent''s thinking or reasoning to a file; archive or export a Copilot session; auto-copy the copilot jsonl/debug log at the end of a prompt; reproduce what was run; review or re-run session commands; set up or troubleshoot the end-of-session capture hook. Pairs with the Stop hook at .github/hooks/session-keeper.json which runs automatically when a session ends.'
-argument-hint: 'e.g. "save this session''s commands and thinking now" or "set up session capture"'
+description: 'Capture Copilot chat session artifacts into the workspace: copy the raw debug JSONL log and extract a session summary (user prompts, models, tool-usage, files), every terminal command, the agent''s thinking/reasoning, and created/edited files into runnable scripts and readable notes. USE WHEN: the user wants a summary of a Copilot chat session; keep/save the commands or scripts run during a chat session; save/copy the agent''s thinking or reasoning to a file; archive or export a Copilot session; auto-copy the copilot jsonl/debug log at the end of a prompt; reproduce what was run; review or re-run session commands; set up or troubleshoot the end-of-session capture hook. Pairs with the Stop hook at .github/hooks/session-keeper.json which runs automatically when a session ends.'
+argument-hint: 'e.g. "summarize this session" or "save this session''s commands and thinking now" or "set up session capture"'
 ---
 
 # Session Keeper
@@ -13,6 +13,7 @@ Outputs go to `<workspace>/.copilot-sessions/`:
 
 ```
 .copilot-sessions/
+├── summary/<session>.md       # overview: prompts, models, tools, files, counts
 ├── logs/<session>.jsonl       # raw Copilot debug log (snapshot)
 ├── commands/<session>.sh      # runnable list of terminal commands (verbatim)
 ├── commands/<session>.md      # readable commands + files created/edited
@@ -20,8 +21,21 @@ Outputs go to `<workspace>/.copilot-sessions/`:
 └── .gitignore                 # ignores logs/ by default, tracks the rest
 ```
 
+The **summary** is the high-level chat recap. It includes:
+
+- session title (when available), start/end time, duration, and the Copilot / VS
+  Code versions;
+- an **at-a-glance** table (user prompts, tool calls, terminal commands, files
+  touched, thinking blocks);
+- the **user's prompts/requests** in order (auto-injected terminal-result and
+  "Continue to iterate?" continuations are filtered out);
+- **models used** with request counts and input/output token totals;
+- a **tool-usage** breakdown; and
+- the list of **files created/edited**, with links to the other artifacts.
+
 ## When to Use
 
+- The user asks for a **summary / recap** of a Copilot chat session.
 - The user asks to **keep / save / export** the commands or scripts run in a chat.
 - The user asks to **save the agent's thinking / reasoning** to a file.
 - The user wants the **copilot jsonl / debug log copied** into the workspace.
@@ -48,8 +62,9 @@ session ends ("end of prompt execution"). The script:
    `$VSCODE_TARGET_SESSION_LOG`, the hook's stdin session id, or by scanning VS
    Code's `workspaceStorage/*/GitHub.copilot-chat/debug-logs/`.
 2. Copies it to `.copilot-sessions/logs/<session>.jsonl`.
-3. Parses `run_in_terminal` spans → writes `<session>.sh` (executable) and
-   `<session>.md`, lists `create_file` / `replace_string_in_file` targets, and
+3. Writes `summary/<session>.md` (user prompts, models, tool usage, files,
+   counts), parses `run_in_terminal` spans → writes `<session>.sh` (executable)
+   and `<session>.md`, lists `create_file` / `replace_string_in_file` targets, and
    writes `thinking/<session>.md` from `agent_response.attrs.reasoning`.
 
 The hook is non-blocking and never fails a session; it reports a short summary
