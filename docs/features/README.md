@@ -10,6 +10,7 @@ Living docs for shipped features and notable fixes. One page per feature area.
 
 ## Changelog
 
+- 2026-06-21 — **Added** `feature-tests` skill — auto-adds/updates tests and refreshes [docs/TESTING.md](../TESTING.md) for every feature/fix ([testing](./testing.md))
 - 2026-06-21 — **Added** comprehensive test suite (Rust core/data/desktop + Vitest frontend) and [docs/TESTING.md](../TESTING.md) ([testing](./testing.md))
 - 2026-06-21 — **Added** Data mode toggle (Live / Local) with persistence ([live-data](./live-data.md))
 - 2026-06-21 — **Added** desktop provider selector + native `fetch_history` (yfinance-rs / yahoo_finance_api) ([live-data](./live-data.md))

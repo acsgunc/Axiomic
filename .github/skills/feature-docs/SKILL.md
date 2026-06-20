@@ -76,3 +76,10 @@ docs/
 
 - [Feature page template](./assets/feature-template.md)
 - [Index template](./assets/index-template.md)
+
+## Pairs with feature-tests
+
+Documenting a change and testing it go together. Whenever this skill applies
+(any feature added or bug fixed), also run the **`feature-tests`** skill before
+ending the turn so the change ships with matching tests and an updated
+[docs/TESTING.md](../../docs/TESTING.md).
