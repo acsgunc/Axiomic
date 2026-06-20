@@ -4,17 +4,18 @@ This guide explains **how to use the app** and, in detail, **where the data come
 from** — whether it's live, and how it moves from a data source into the charts,
 indicators, and backtests.
 
-- [Quick start](#quick-start)
-- [The interface](#the-interface)
-- [Where the data comes from](#where-the-data-comes-from)
-  - [1. Built-in sample data (default)](#1-built-in-sample-data-default--not-live)
-  - [2. CSV upload (offline)](#2-csv-upload-offline--your-own-data)
-  - [3. Live proxy (optional)](#3-live-proxy-optional--end-of-day-market-data)
-- [Is it live?](#is-it-live)
-- [How data flows through the app](#how-data-flows-through-the-app)
-- [Where your data is stored](#where-your-data-is-stored)
-- [Expected data format](#expected-data-format)
-- [FAQ](#faq)
+- [Using Axiomic \& How Data Flows](#using-axiomic--how-data-flows)
+  - [Quick start](#quick-start)
+  - [The interface](#the-interface)
+  - [Where the data comes from](#where-the-data-comes-from)
+    - [1. Built-in sample data (default) — *not live*](#1-built-in-sample-data-default--not-live)
+    - [2. CSV upload (offline) — *your own data*](#2-csv-upload-offline--your-own-data)
+    - [3. Live proxy (optional) — *end-of-day market data*](#3-live-proxy-optional--end-of-day-market-data)
+  - [Is it live?](#is-it-live)
+  - [How data flows through the app](#how-data-flows-through-the-app)
+  - [Where your data is stored](#where-your-data-is-stored)
+  - [Expected data format](#expected-data-format)
+  - [FAQ](#faq)
 
 ---
 
