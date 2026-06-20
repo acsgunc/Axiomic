@@ -1,6 +1,6 @@
 ---
 name: session-keeper
-description: 'Capture Copilot chat session artifacts into the workspace: copy the raw debug JSONL log and extract a session summary (user prompts, models, tool-usage, files), every terminal command, the agent''s thinking/reasoning, and created/edited files into runnable scripts and readable notes. USE WHEN: the user wants a summary of a Copilot chat session; keep/save the commands or scripts run during a chat session; save/copy the agent''s thinking or reasoning to a file; archive or export a Copilot session; auto-copy the copilot jsonl/debug log at the end of a prompt; reproduce what was run; review or re-run session commands; set up or troubleshoot the end-of-session capture hook. Pairs with the Stop hook at .github/hooks/session-keeper.json which runs automatically when a session ends.'
+description: 'Capture Copilot chat session artifacts into the workspace: copy the raw debug JSONL log and the conversation transcript JSONL, and extract a session summary (user prompts, models, tool-usage, files), every terminal command, the agent''s thinking/reasoning, and created/edited files into runnable scripts and readable notes. USE WHEN: the user wants a summary of a Copilot chat session; keep/save the commands or scripts run during a chat session; save/copy the agent''s thinking or reasoning to a file; copy the copilot transcript/jsonl/debug log into the workspace; archive or export a Copilot session; auto-copy the copilot jsonl/transcript at the end of a prompt; reproduce what was run; review or re-run session commands; set up or troubleshoot the end-of-session capture hook. Pairs with the Stop hook at .github/hooks/session-keeper.json which runs automatically when a session ends.'
 argument-hint: 'e.g. "summarize this session" or "save this session''s commands and thinking now" or "set up session capture"'
 ---
 
@@ -13,12 +13,13 @@ Outputs go to `<workspace>/.copilot-sessions/`:
 
 ```
 .copilot-sessions/
-├── summary/<session>.md       # overview: prompts, models, tools, files, counts
-├── logs/<session>.jsonl       # raw Copilot debug log (snapshot)
-├── commands/<session>.sh      # runnable list of terminal commands (verbatim)
-├── commands/<session>.md      # readable commands + files created/edited
-├── thinking/<session>.md      # the agent's thinking/reasoning, in order
-└── .gitignore                 # ignores logs/ by default, tracks the rest
+├── summary/<session>.md             # overview: prompts, models, tools, files, counts
+├── logs/<session>.jsonl             # raw Copilot debug log (snapshot)
+├── logs/<session>.transcript.jsonl  # conversation transcript (snapshot)
+├── commands/<session>.sh            # runnable list of terminal commands (verbatim)
+├── commands/<session>.md            # readable commands + files created/edited
+├── thinking/<session>.md            # the agent's thinking/reasoning, in order
+└── .gitignore                       # ignores logs/ by default, tracks the rest
 ```
 
 The **summary** is the high-level chat recap. It includes:
@@ -38,7 +39,8 @@ The **summary** is the high-level chat recap. It includes:
 - The user asks for a **summary / recap** of a Copilot chat session.
 - The user asks to **keep / save / export** the commands or scripts run in a chat.
 - The user asks to **save the agent's thinking / reasoning** to a file.
-- The user wants the **copilot jsonl / debug log copied** into the workspace.
+- The user wants the **copilot jsonl / debug log / transcript copied** into the
+  workspace.
 - Reproducing or reviewing what a session executed.
 - Setting up or debugging the automatic end-of-session capture.
 
@@ -61,7 +63,10 @@ session ends ("end of prompt execution"). The script:
 1. Finds this workspace's Copilot debug log (`main.jsonl`) via
    `$VSCODE_TARGET_SESSION_LOG`, the hook's stdin session id, or by scanning VS
    Code's `workspaceStorage/*/GitHub.copilot-chat/debug-logs/`.
-2. Copies it to `.copilot-sessions/logs/<session>.jsonl`.
+2. Copies it to `.copilot-sessions/logs/<session>.jsonl`, and copies the sibling
+   conversation transcript
+   (`GitHub.copilot-chat/transcripts/<session>.jsonl`) to
+   `.copilot-sessions/logs/<session>.transcript.jsonl` when present.
 3. Writes `summary/<session>.md` (user prompts, models, tool usage, files,
    counts), parses `run_in_terminal` spans → writes `<session>.sh` (executable)
    and `<session>.md`, lists `create_file` / `replace_string_in_file` targets, and

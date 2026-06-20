@@ -57,6 +57,17 @@ async function main() {
     fs.copyFileSync(logFile, logCopy);
     notes.push(`log → ${rel(workspace, logCopy)}`);
 
+    // 1a. Copy the conversation transcript JSONL, if present (sibling of the
+    //     debug log: .../GitHub.copilot-chat/transcripts/<session>.jsonl).
+    const transcript = resolveTranscript(logFile, sessionId);
+    if (transcript && fs.existsSync(transcript)) {
+      const tCopy = path.join(logsDir, `${sessionId}.transcript.jsonl`);
+      fs.copyFileSync(transcript, tCopy);
+      notes.push(`transcript → ${rel(workspace, tCopy)}`);
+    } else {
+      notes.push('no transcript found alongside the debug log');
+    }
+
     // 2. Parse and extract commands, thinking, touched files, and metadata.
     const session = parseSession(logFile);
     const { commands, thoughts, files } = session;
@@ -130,6 +141,41 @@ function resolveLog(input) {
   // 3. Newest log overall.
   candidates.sort((a, b) => b.mtime - a.mtime);
   return candidates[0] ?? { logFile: null, sessionId: 'unknown' };
+}
+
+/**
+ * Resolves the conversation transcript JSONL for a session.
+ *
+ * The debug log lives at
+ *   .../GitHub.copilot-chat/debug-logs/<session>/main.jsonl
+ * and the transcript is its sibling
+ *   .../GitHub.copilot-chat/transcripts/<session>.jsonl
+ * We derive it from the log path; if that fails, we scan known chat roots.
+ */
+function resolveTranscript(logFile, sessionId) {
+  // Derive from the debug-log path: parent of <session>/ is debug-logs/, whose
+  // parent is the GitHub.copilot-chat root that also holds transcripts/.
+  const sessionDir = path.dirname(logFile); // .../debug-logs/<session>
+  const debugLogsDir = path.dirname(sessionDir); // .../debug-logs
+  const chatRoot = path.dirname(debugLogsDir); // .../GitHub.copilot-chat
+  const candidate = path.join(chatRoot, 'transcripts', `${sessionId}.jsonl`);
+  if (safeExists(candidate)) return candidate;
+
+  // Fallback: scan every workspaceStorage chat root for a matching transcript.
+  for (const root of debugLogRoots()) {
+    if (!safeExists(root)) continue;
+    for (const wsId of safeReaddir(root)) {
+      const t = path.join(
+        root,
+        wsId,
+        'GitHub.copilot-chat',
+        'transcripts',
+        `${sessionId}.jsonl`,
+      );
+      if (safeExists(t)) return t;
+    }
+  }
+  return null;
 }
 
 /** Returns every `main.jsonl` under any VS Code workspaceStorage debug-logs dir. */
