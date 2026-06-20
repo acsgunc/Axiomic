@@ -16,8 +16,25 @@ where the app runs:
 
 The live fetch button lives in the **Data** panel (bottom-left).
 
+## Data mode (Live vs Local)
+
+The **Data** panel has a **Data mode** toggle that controls what happens when you
+select a symbol:
+
+- **Live** — automatically fetches fresh data on symbol select (native on
+  desktop, proxy in browser). If a fetch fails, it falls back to local data and
+  shows a notice.
+- **Local** — uses cached/sample data only; no network calls.
+
+The choice is **persisted** (localStorage), so "always live" stays on across
+restarts. Live is only selectable when a live source is available (desktop app,
+or a configured proxy in the browser); otherwise the app stays in Local mode.
+
 ## Status
 
+- **Added** — 2026-06-21 — **Data mode** toggle (Live / Local) in the Data panel:
+  choose whether selecting a symbol auto-fetches live data or uses local/cached
+  data. Persisted across sessions.
 - **Added** — 2026-06-21 — Desktop app gained a **Source** provider selector
   (yfinance-rs / yahoo_finance_api) and a native **Fetch Live Data** path via a
   new `fetch_history` Tauri command — no proxy or API key required.

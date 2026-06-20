@@ -123,3 +123,25 @@ export async function loadFromNative(
   }
   return candles;
 }
+
+// ---------------------------------------------------------------------------
+// Unified live fetching (runtime-aware)
+// ---------------------------------------------------------------------------
+
+/** Whether *any* live data source is available in the current runtime. */
+export const liveAvailable = isDesktop || hasProxy;
+
+/**
+ * Fetches live candles using the best source for the current runtime:
+ * native crates in the desktop app, otherwise the configured proxy.
+ */
+export async function fetchLive(
+  symbol: string,
+  provider: NativeProvider,
+): Promise<Candle[]> {
+  if (isDesktop) return loadFromNative(symbol, provider);
+  if (hasProxy) return loadFromProxy(symbol);
+  throw new DataError(
+    'No live data source available. Run the desktop app or configure a proxy.',
+  );
+}

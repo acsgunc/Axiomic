@@ -9,6 +9,8 @@
 import { create } from 'zustand';
 import { engine } from '../engine';
 import {
+  fetchLive,
+  liveAvailable,
   loadFromCsvFile,
   loadFromNative,
   loadFromProxy,
@@ -27,6 +29,21 @@ import type { Candle, IndicatorConfig } from '../types';
 /** Stable empty reference to avoid re-render loops when a symbol has no data. */
 const EMPTY_CANDLES: Candle[] = [];
 
+/** How the app sources candles when a symbol is selected. */
+export type DataMode = 'live' | 'local';
+
+const DATA_MODE_KEY = 'axiomic.dataMode';
+
+/** Reads the persisted data mode, defaulting to 'local' (safe/offline). */
+function initialDataMode(): DataMode {
+  if (!liveAvailable) return 'local';
+  try {
+    return localStorage.getItem(DATA_MODE_KEY) === 'live' ? 'live' : 'local';
+  } catch {
+    return 'local';
+  }
+}
+
 const DEFAULT_INDICATORS: IndicatorConfig[] = [
   { id: 'sma20', kind: 'sma', period: 20, enabled: true, color: '#3b82f6' },
   { id: 'ema50', kind: 'ema', period: 50, enabled: true, color: '#f59e0b' },
@@ -41,6 +58,7 @@ interface AppState {
   candlesBySymbol: Record<string, Candle[]>;
   indicators: IndicatorConfig[];
   provider: NativeProvider;
+  dataMode: DataMode;
   loading: boolean;
   error: string | null;
   storageReady: boolean;
@@ -53,6 +71,8 @@ interface AppState {
   loadProxy: (symbol: string) => Promise<void>;
   loadNative: (symbol: string) => Promise<void>;
   setProvider: (provider: NativeProvider) => void;
+  setDataMode: (mode: DataMode) => void;
+  refreshActive: () => Promise<void>;
   loadSampleData: (symbol: string) => Promise<void>;
   toggleIndicator: (id: string) => void;
   setIndicatorPeriod: (id: string, period: number) => void;
@@ -65,6 +85,7 @@ export const useStore = create<AppState>((set, get) => ({
   candlesBySymbol: {},
   indicators: DEFAULT_INDICATORS,
   provider: 'yfinance',
+  dataMode: initialDataMode(),
   loading: false,
   error: null,
   storageReady: false,
@@ -91,16 +112,34 @@ export const useStore = create<AppState>((set, get) => ({
 
     set({ loading: true });
     try {
-      // Try persistent stores first, then fall back to generated sample data.
       let candles: Candle[] | null = null;
-      if (get().storageReady) {
-        candles = await loadCandles(symbol);
-        if (!candles.length) candles = null;
+
+      // Live mode: fetch fresh data first; fall back to local on failure.
+      if (get().dataMode === 'live' && liveAvailable) {
+        try {
+          candles = await fetchLive(symbol, get().provider);
+          if (get().storageReady && candles.length) {
+            await saveCandles(symbol, candles);
+          }
+        } catch (err) {
+          set({
+            error: `Live fetch failed (${errMsg(err)}). Showing local data.`,
+          });
+          candles = null;
+        }
       }
-      if (!candles) candles = await readOpfs(symbol);
-      if (!candles || !candles.length) {
-        candles = loadSample(symbol);
-        if (get().storageReady) await saveCandles(symbol, candles);
+
+      // Local path: persistent stores first, then generated sample data.
+      if (!candles) {
+        if (get().storageReady) {
+          candles = await loadCandles(symbol);
+          if (!candles.length) candles = null;
+        }
+        if (!candles) candles = await readOpfs(symbol);
+        if (!candles || !candles.length) {
+          candles = loadSample(symbol);
+          if (get().storageReady) await saveCandles(symbol, candles);
+        }
       }
       set((s) => ({
         candlesBySymbol: { ...s.candlesBySymbol, [symbol]: candles! },
@@ -189,6 +228,29 @@ export const useStore = create<AppState>((set, get) => ({
 
   setProvider(provider) {
     set({ provider });
+  },
+
+  setDataMode(mode) {
+    try {
+      localStorage.setItem(DATA_MODE_KEY, mode);
+    } catch {
+      // Ignore storage failures (e.g. private mode); mode still applies in-session.
+    }
+    set({ dataMode: mode });
+    // Switching to live should immediately refresh the active symbol.
+    if (mode === 'live' && liveAvailable) void get().refreshActive();
+  },
+
+  async refreshActive() {
+    const symbol = get().activeSymbol;
+    if (!symbol) return;
+    // Drop the cached copy so setActiveSymbol re-sources it per the current mode.
+    set((s) => {
+      const next = { ...s.candlesBySymbol };
+      delete next[symbol];
+      return { candlesBySymbol: next };
+    });
+    await get().setActiveSymbol(symbol);
   },
 
   async loadSampleData(symbol) {
