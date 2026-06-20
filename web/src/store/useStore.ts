@@ -8,7 +8,13 @@
 
 import { create } from 'zustand';
 import { engine } from '../engine';
-import { loadFromCsvFile, loadFromProxy, loadSample } from '../lib/dataProvider';
+import {
+  loadFromCsvFile,
+  loadFromNative,
+  loadFromProxy,
+  loadSample,
+  type NativeProvider,
+} from '../lib/dataProvider';
 import {
   isStorageReady,
   listCachedSymbols,
@@ -34,6 +40,7 @@ interface AppState {
   activeSymbol: string;
   candlesBySymbol: Record<string, Candle[]>;
   indicators: IndicatorConfig[];
+  provider: NativeProvider;
   loading: boolean;
   error: string | null;
   storageReady: boolean;
@@ -44,6 +51,8 @@ interface AppState {
   removeSymbol: (symbol: string) => void;
   loadCsv: (file: File) => Promise<void>;
   loadProxy: (symbol: string) => Promise<void>;
+  loadNative: (symbol: string) => Promise<void>;
+  setProvider: (provider: NativeProvider) => void;
   loadSampleData: (symbol: string) => Promise<void>;
   toggleIndicator: (id: string) => void;
   setIndicatorPeriod: (id: string, period: number) => void;
@@ -55,6 +64,7 @@ export const useStore = create<AppState>((set, get) => ({
   activeSymbol: 'AAPL',
   candlesBySymbol: {},
   indicators: DEFAULT_INDICATORS,
+  provider: 'yfinance',
   loading: false,
   error: null,
   storageReady: false,
@@ -157,6 +167,28 @@ export const useStore = create<AppState>((set, get) => ({
     } finally {
       set({ loading: false });
     }
+  },
+
+  async loadNative(symbol) {
+    const s = symbol.trim().toUpperCase();
+    set({ loading: true, error: null });
+    try {
+      const candles = await loadFromNative(s, get().provider);
+      get().addSymbol(s);
+      set((state) => ({
+        candlesBySymbol: { ...state.candlesBySymbol, [s]: candles },
+        activeSymbol: s,
+      }));
+      if (get().storageReady) await saveCandles(s, candles);
+    } catch (err) {
+      set({ error: errMsg(err) });
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  setProvider(provider) {
+    set({ provider });
   },
 
   async loadSampleData(symbol) {

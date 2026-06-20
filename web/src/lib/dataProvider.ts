@@ -69,3 +69,57 @@ export function loadSample(symbol: string): Candle[] {
 
 /** Whether a remote proxy is configured. */
 export const hasProxy = Boolean(PROXY_URL);
+
+// ---------------------------------------------------------------------------
+// Desktop (Tauri) native fetching
+// ---------------------------------------------------------------------------
+
+/** Market-data backends available in the desktop app. */
+export type NativeProvider = 'yfinance' | 'yahoo';
+
+interface TauriGlobal {
+  core: {
+    invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T>;
+  };
+}
+
+function tauri(): TauriGlobal | null {
+  const g = globalThis as unknown as { __TAURI__?: TauriGlobal };
+  return g.__TAURI__ ?? null;
+}
+
+/** Whether the app is running inside the Tauri desktop shell. */
+export const isDesktop = tauri() !== null;
+
+/**
+ * Fetches live daily candles natively via the Tauri backend, which calls the
+ * free Yahoo Finance crates directly (no proxy or API key needed).
+ */
+export async function loadFromNative(
+  symbol: string,
+  provider: NativeProvider,
+): Promise<Candle[]> {
+  const api = tauri();
+  if (!api) {
+    throw new DataError('Native fetching is only available in the desktop app.');
+  }
+  let candles: Candle[];
+  try {
+    candles = await api.core.invoke<Candle[]>('fetch_history', {
+      ticker: symbol,
+      provider,
+    });
+  } catch (err) {
+    throw new DataError(
+      typeof err === 'string'
+        ? err
+        : err instanceof Error
+          ? err.message
+          : `Failed to fetch ${symbol}.`,
+    );
+  }
+  if (!candles || !candles.length) {
+    throw new DataError(`No data returned for ${symbol}.`);
+  }
+  return candles;
+}

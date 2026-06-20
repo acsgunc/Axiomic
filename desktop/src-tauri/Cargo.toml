@@ -19,6 +19,10 @@ serde_json = "1"
 # Reuse the shared analysis core natively (no WASM) so backtests can run in the
 # Rust backend if desired, sharing logic with the browser build.
 axiomic-core = { path = "../../core" }
+# Native market-data fetching (yfinance-rs / yahoo_finance_api). Only usable in
+# the desktop build — these pull in tokio + reqwest and do not target WASM, so
+# the browser build uses the serverless proxy instead.
+axiomic-data = { path = "../../data" }
 
 [features]
 # Default Tauri production build.

@@ -16,6 +16,9 @@ the WASM `core` so the WASM build stays free of non-`wasm32` dependencies.
 ## Status
 
 - **Added** — 2026-06-21
+- **Changed** — 2026-06-21 — Wired into the **desktop app** via the
+  `fetch_history` Tauri command, with a UI provider selector. See
+  [live-data](./live-data.md).
 
 ## How to use
 
@@ -58,9 +61,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
   `YahooApiWrapper::with_window(interval, range)`.
 - Both backends hit the network — runtime fetches can fail if offline or
   rate-limited.
+- **Native-only:** consumed by the **desktop** app (Tauri) via `fetch_history`,
+  not the browser build (tokio/reqwest don't target WASM — the browser uses the
+  proxy instead). See [live-data](./live-data.md).
 
 ## Source
 
 - [data/Cargo.toml](../../data/Cargo.toml)
 - [data/src/lib.rs](../../data/src/lib.rs)
 - [data/src/main.rs](../../data/src/main.rs)
+- [desktop/src-tauri/src/lib.rs](../../desktop/src-tauri/src/lib.rs) — `fetch_history` Tauri command

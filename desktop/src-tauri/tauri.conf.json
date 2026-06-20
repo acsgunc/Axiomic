@@ -10,6 +10,7 @@
     "beforeBuildCommand": "pnpm --dir ../web build"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "title": "Axiomic",

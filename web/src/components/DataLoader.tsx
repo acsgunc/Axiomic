@@ -1,14 +1,17 @@
 import { useRef } from 'react';
 import { useStore, useActiveCandles } from '../store/useStore';
-import { hasProxy } from '../lib/dataProvider';
+import { hasProxy, isDesktop, type NativeProvider } from '../lib/dataProvider';
 import { candlesToCsv } from '../lib/sampleData';
 import { Button } from './ui';
 
-/** Data loading controls: CSV upload, proxy fetch, sample data, and export. */
+/** Data loading controls: CSV upload, live fetch, sample data, and export. */
 export function DataLoader() {
   const fileRef = useRef<HTMLInputElement>(null);
   const loadCsv = useStore((s) => s.loadCsv);
   const loadProxy = useStore((s) => s.loadProxy);
+  const loadNative = useStore((s) => s.loadNative);
+  const provider = useStore((s) => s.provider);
+  const setProvider = useStore((s) => s.setProvider);
   const activeSymbol = useStore((s) => s.activeSymbol);
   const activeCandles = useActiveCandles();
   const loading = useStore((s) => s.loading);
@@ -43,26 +46,55 @@ export function DataLoader() {
       <Button onClick={() => fileRef.current?.click()} disabled={loading}>
         Upload CSV
       </Button>
-      <Button
-        onClick={() => void loadProxy(activeSymbol)}
-        disabled={loading || !hasProxy}
-        title={
-          hasProxy
-            ? `Fetch live daily candles for ${activeSymbol}`
-            : 'Live fetch is disabled — configure a data proxy to enable it'
-        }
-      >
-        {hasProxy ? 'Fetch Live Data' : 'Fetch Live Data (setup needed)'}
-      </Button>
-      {!hasProxy && (
-        <p className="text-[11px] leading-snug text-amber-500/90">
-          Live fetch is off. Deploy the data proxy and set{' '}
-          <code className="rounded bg-base-700 px-1">VITE_PROXY_URL</code> in{' '}
-          <code className="rounded bg-base-700 px-1">web/.env</code> to enable
-          it (see <code className="rounded bg-base-700 px-1">proxy/README.md</code>).
-          Meanwhile, upload a CSV.
-        </p>
+
+      {isDesktop ? (
+        <div className="flex flex-col gap-1.5">
+          <label className="flex items-center gap-2 text-[11px] text-slate-400">
+            Source
+            <select
+              value={provider}
+              onChange={(e) => setProvider(e.target.value as NativeProvider)}
+              disabled={loading}
+              className="flex-1 rounded-md border border-base-700 bg-base-800 px-2 py-1 text-xs text-slate-200 focus:border-accent focus:outline-none disabled:opacity-50"
+            >
+              <option value="yfinance">yfinance-rs (Yahoo)</option>
+              <option value="yahoo">yahoo_finance_api (legacy)</option>
+            </select>
+          </label>
+          <Button
+            onClick={() => void loadNative(activeSymbol)}
+            disabled={loading}
+            title={`Fetch live daily candles for ${activeSymbol} via ${provider}`}
+          >
+            {loading ? 'Fetching…' : 'Fetch Live Data'}
+          </Button>
+        </div>
+      ) : (
+        <>
+          <Button
+            onClick={() => void loadProxy(activeSymbol)}
+            disabled={loading || !hasProxy}
+            title={
+              hasProxy
+                ? `Fetch live daily candles for ${activeSymbol}`
+                : 'Live fetch is disabled — configure a data proxy to enable it'
+            }
+          >
+            {hasProxy ? 'Fetch Live Data' : 'Fetch Live Data (setup needed)'}
+          </Button>
+          {!hasProxy && (
+            <p className="text-[11px] leading-snug text-amber-500/90">
+              Live fetch is off. Deploy the data proxy and set{' '}
+              <code className="rounded bg-base-700 px-1">VITE_PROXY_URL</code> in{' '}
+              <code className="rounded bg-base-700 px-1">web/.env</code> to enable
+              it (see{' '}
+              <code className="rounded bg-base-700 px-1">proxy/README.md</code>).
+              Meanwhile, upload a CSV.
+            </p>
+          )}
+        </>
       )}
+
       <Button
         onClick={exportCsv}
         variant="ghost"
