@@ -18,8 +18,28 @@ proxy URL is configured.
 
 ## How to use
 
-Live fetch needs the data proxy (Cloudflare Worker) deployed and the app pointed
-at it:
+Live fetch needs the data proxy (Cloudflare Worker) running and the app pointed
+at it. There are two setups:
+
+### Local development (no deploy)
+
+1. Get a free upstream key (the sample uses Alpha Vantage:
+   https://www.alphavantage.co/support/#api-key).
+2. Add it to the proxy's local secrets file (gitignored):
+   ```bash
+   cd proxy
+   cp .dev.vars.example .dev.vars   # then paste your key into .dev.vars
+   ```
+3. Start the proxy and the web app (separate terminals):
+   ```bash
+   pnpm --dir proxy dev   # http://localhost:8787
+   pnpm --dir web dev
+   ```
+   `web/.env` already points `VITE_PROXY_URL` at `http://localhost:8787`.
+4. In the app, pick a symbol in the **Watchlist**, then click **Fetch Live Data**
+   in the **Data** panel.
+
+### Production (deployed Worker)
 
 1. Deploy the proxy and set its upstream API key (see [proxy/README.md](../../proxy/README.md)):
    ```bash
@@ -27,7 +47,7 @@ at it:
    npx wrangler secret put DATA_API_KEY   # e.g. an Alpha Vantage key
    npx wrangler deploy
    ```
-2. Point the web app at the deployed worker — create `web/.env` from the example:
+2. Point the web app at the deployed worker in `web/.env`:
    ```bash
    # web/.env
    VITE_PROXY_URL=https://axiomic-proxy.your-account.workers.dev
@@ -36,8 +56,6 @@ at it:
    ```bash
    pnpm --dir web dev
    ```
-4. In the app, pick a symbol in the **Watchlist**, then click **Fetch Live Data**
-   in the **Data** panel.
 
 Without a proxy configured, the button stays disabled and the panel shows a hint;
 use **Upload CSV** instead (columns: Date, Open, High, Low, Close, Volume).

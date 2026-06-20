@@ -1,0 +1,8 @@
+# Local-only secrets for `wrangler dev` (NOT committed; .dev.vars is gitignored).
+# Copy this file to `.dev.vars` and paste your real upstream API key.
+#   cp .dev.vars.example .dev.vars
+#
+# The sample worker targets Alpha Vantage (free key: https://www.alphavantage.co/support/#api-key).
+# For production deploys, set this as a Worker secret instead:
+#   npx wrangler secret put DATA_API_KEY
+DATA_API_KEY=your-upstream-api-key-here
