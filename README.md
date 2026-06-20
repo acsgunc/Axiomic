@@ -116,6 +116,10 @@ Open the app, then:
 - Toggle **Indicators** and tune their periods (recomputed in Rust/WASM).
 - Run a **Backtest** (SMA crossover) and inspect the equity curve + metrics.
 
+> **New to the app?** See [docs/USAGE.md](docs/USAGE.md) for a full walkthrough of
+> the interface and a detailed explanation of **where the data comes from** —
+> sample data vs. CSV upload vs. the optional live proxy (and whether it's "live").
+
 ### 3. Production build
 
 ```bash
