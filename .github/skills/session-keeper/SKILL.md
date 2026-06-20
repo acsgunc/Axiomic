@@ -1,6 +1,6 @@
 ---
 name: session-keeper
-description: 'Capture Copilot chat session artifacts into the workspace across VS Code, VS Code Insiders, and Visual Studio: copy the raw debug JSONL log and the conversation transcript JSONL, and extract a session summary (user prompts, models, tool-usage, files), every terminal command, the agent''s thinking/reasoning, and created/edited files into runnable scripts and readable notes (Visual Studio logs are unstructured, so its capture is the raw trace log plus a metadata summary). USE WHEN: the user wants a summary of a Copilot chat session; keep/save the commands or scripts run during a chat session; save/copy the agent''s thinking or reasoning to a file; copy the copilot transcript/jsonl/debug log into the workspace; archive or export a Copilot session; auto-copy the copilot jsonl/transcript at the end of a prompt; reproduce what was run; review or re-run session commands; set up or troubleshoot the end-of-session capture hook. Pairs with the Stop hook at .github/hooks/session-keeper.json which runs automatically when a session ends.'
+description: 'Capture Copilot chat session artifacts into the workspace across VS Code, VS Code Insiders, and Visual Studio: copy the raw debug JSONL log and the conversation transcript JSONL, and extract a session summary (user prompts, models, tool-usage, files), every terminal command, the agent''s thinking/reasoning, the agent''s full visible chat replies, and created/edited files into runnable scripts and readable notes (Visual Studio logs are unstructured, so its capture is the raw trace log plus a metadata summary). USE WHEN: the user wants a summary of a Copilot chat session; keep/save the commands or scripts run during a chat session; save/copy the agent''s thinking or reasoning to a file; save/copy the agent''s replies or final answer/summary to a file; copy the copilot transcript/jsonl/debug log into the workspace; archive or export a Copilot session; auto-copy the copilot jsonl/transcript at the end of a prompt; reproduce what was run; review or re-run session commands; set up or troubleshoot the end-of-session capture hook. Pairs with the Stop hook at .github/hooks/session-keeper.json which runs automatically when a session ends.'
 argument-hint: 'e.g. "summarize this session" or "save this session''s commands and thinking now" or "set up session capture"'
 ---
 
@@ -30,6 +30,7 @@ Outputs go to `<workspace>/.copilot-sessions/`:
 ├── commands/<session>.sh            # runnable list of terminal commands (verbatim)
 ├── commands/<session>.md            # readable commands + files created/edited
 ├── thinking/<session>.md            # the agent's thinking/reasoning, in order
+├── responses/<session>.md           # the agent's full visible chat replies, in order
 └── .gitignore                       # ignores logs/ by default, tracks the rest
 ```
 
@@ -50,6 +51,7 @@ The **summary** is the high-level chat recap. It includes:
 - The user asks for a **summary / recap** of a Copilot chat session.
 - The user asks to **keep / save / export** the commands or scripts run in a chat.
 - The user asks to **save the agent's thinking / reasoning** to a file.
+- The user asks to **save the agent's replies / final answer / summary** to a file.
 - The user wants the **copilot jsonl / debug log / transcript copied** into the
   workspace.
 - Reproducing or reviewing what a session executed.
@@ -87,8 +89,10 @@ session ends ("end of prompt execution"). The script:
    `.copilot-sessions/logs/<session>.transcript.jsonl` when present.
 3. Writes `summary/<session>.md` (user prompts, models, tool usage, files,
    counts), parses `run_in_terminal` spans → writes `<session>.sh` (executable)
-   and `<session>.md`, lists `create_file` / `replace_string_in_file` targets, and
-   writes `thinking/<session>.md` from `agent_response.attrs.reasoning`.
+   and `<session>.md`, lists `create_file` / `replace_string_in_file` targets,
+   writes `thinking/<session>.md` from `agent_response.attrs.reasoning`, and
+   writes `responses/<session>.md` with the agent's full visible chat replies
+   (the complete message text shown in the panel, in order).
 
 The Stop hook is a **VS Code Copilot** feature, so automatic capture only fires
 in VS Code / VS Code Insiders. In **Visual Studio**, run the script manually (see

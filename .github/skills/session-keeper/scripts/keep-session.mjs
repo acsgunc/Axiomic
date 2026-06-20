@@ -77,8 +77,10 @@ async function main() {
 
     const cmdDir = path.join(outRoot, 'commands');
     const thinkDir = path.join(outRoot, 'thinking');
+    const respDir = path.join(outRoot, 'responses');
     fs.mkdirSync(cmdDir, { recursive: true });
     fs.mkdirSync(thinkDir, { recursive: true });
+    fs.mkdirSync(respDir, { recursive: true });
 
     // 1. Copy the raw JSONL log (latest snapshot for this session).
     const logCopy = path.join(logsDir, `${sessionId}.jsonl`);
@@ -98,7 +100,7 @@ async function main() {
 
     // 2. Parse and extract commands, thinking, touched files, and metadata.
     const session = parseSession(logFile);
-    const { commands, thoughts, files } = session;
+    const { commands, thoughts, files, responses } = session;
 
     // 2a. Always write a session summary (the high-level overview).
     writeSummaryMarkdown(
@@ -122,6 +124,18 @@ async function main() {
       notes.push(`${thoughts.length} thinking blocks → ${rel(workspace, thinkDir)}`);
     } else {
       notes.push('no thinking captured (model may not expose reasoning)');
+    }
+
+    // 4. Capture the agent's visible replies (the messages shown in chat).
+    if (responses.length) {
+      writeResponsesMarkdown(
+        path.join(respDir, `${sessionId}.md`),
+        sessionId,
+        responses,
+      );
+      notes.push(`${responses.length} responses → ${rel(workspace, respDir)}`);
+    } else {
+      notes.push('no agent responses captured');
     }
 
     ensureGitignore(outRoot);
@@ -346,6 +360,7 @@ function parseSession(logFile) {
   const lines = fs.readFileSync(logFile, 'utf8').split(/\r?\n/);
   const commands = [];
   const thoughts = [];
+  const responses = [];
   const files = new Set();
   const prompts = [];
   const toolCounts = new Map();
@@ -353,6 +368,7 @@ function parseSession(logFile) {
   const meta = { copilotVersion: '', vscodeVersion: '', title: '' };
   const seenCmd = new Set();
   const seenThought = new Set();
+  const seenResponse = new Set();
   let firstTs = 0;
   let lastTs = 0;
   let toolCallTotal = 0;
@@ -442,6 +458,16 @@ function parseSession(logFile) {
           });
         }
       }
+      // Also capture the full visible reply text (the message shown in chat),
+      // not just the short context snippet kept alongside reasoning.
+      const reply = allAssistantText(attrs.response);
+      if (reply) {
+        const rkey = reply.slice(0, 200);
+        if (!seenResponse.has(rkey)) {
+          seenResponse.add(rkey);
+          responses.push({ text: reply, ts: span.ts || 0 });
+        }
+      }
     } else if (
       name === 'create_file' ||
       name === 'replace_string_in_file' ||
@@ -455,10 +481,12 @@ function parseSession(logFile) {
 
   commands.sort((a, b) => a.ts - b.ts);
   thoughts.sort((a, b) => a.ts - b.ts);
+  responses.sort((a, b) => a.ts - b.ts);
   prompts.sort((a, b) => a.ts - b.ts);
   return {
     commands,
     thoughts,
+    responses,
     files: [...files],
     prompts,
     toolCounts: [...toolCounts.entries()].sort((a, b) => b[1] - a[1]),
@@ -526,6 +554,31 @@ function firstAssistantText(response) {
     }
   }
   return '';
+}
+
+/**
+ * Pulls the *complete* visible assistant text from an `attrs.response` blob
+ * (any model): every text part of every message, concatenated in order, with
+ * tool-call parts skipped. This is the full reply shown in chat.
+ */
+function allAssistantText(response) {
+  if (typeof response !== 'string') return '';
+  const parsed = safeJson(response);
+  if (parsed == null) return response.trim();
+  if (!Array.isArray(parsed)) return collectText(parsed).trim();
+  const chunks = [];
+  for (const msg of parsed) {
+    if (!msg || !Array.isArray(msg.parts)) continue;
+    for (const p of msg.parts) {
+      if (!p || (p.type && /tool/i.test(String(p.type)))) continue;
+      const text =
+        (typeof p.content === 'string' && p.content) ||
+        (typeof p.text === 'string' && p.text) ||
+        '';
+      if (text.trim()) chunks.push(text.trim());
+    }
+  }
+  return chunks.join('\n\n').trim();
 }
 
 /**
@@ -616,7 +669,7 @@ function writeVisualStudioSummary(file, sessionId, vs) {
  * other captured artifacts.
  */
 function writeSummaryMarkdown(file, sessionId, s) {
-  const { commands, thoughts, files, prompts, toolCounts, models, meta } = s;
+  const { commands, thoughts, responses, files, prompts, toolCounts, models, meta } = s;
   const out = [];
 
   out.push(`# Session summary — ${sessionId}`);
@@ -647,6 +700,7 @@ function writeSummaryMarkdown(file, sessionId, s) {
   out.push(`| Terminal commands | ${commands.length} |`);
   out.push(`| Files created/edited | ${files.length} |`);
   out.push(`| Thinking blocks | ${thoughts.length} |`);
+  out.push(`| Agent replies | ${responses?.length || 0} |`);
   out.push('');
 
   // The user's prompts/requests — the actual "chat summary".
@@ -704,6 +758,9 @@ function writeSummaryMarkdown(file, sessionId, s) {
     out.push(`- Commands: \`commands/${sessionId}.sh\` · \`commands/${sessionId}.md\``);
   }
   if (thoughts.length) out.push(`- Thinking: \`thinking/${sessionId}.md\``);
+  if ((responses?.length || 0) > 0) {
+    out.push(`- Responses: \`responses/${sessionId}.md\``);
+  }
   out.push('');
 
   fs.writeFileSync(file, out.join('\n'), 'utf8');
@@ -793,6 +850,32 @@ function writeThinkingMarkdown(file, sessionId, thoughts) {
       out.push(`> ${truncate(t.text, 280).replace(/\n+/g, ' ')}`);
       out.push('');
     }
+  });
+  fs.writeFileSync(file, out.join('\n'), 'utf8');
+}
+
+/**
+ * Writes the agent's full visible replies (the messages shown in the chat
+ * panel), in order — the complete prose, not the truncated snippet kept next to
+ * the reasoning. This is the "What I found … / summary" text the user sees.
+ */
+function writeResponsesMarkdown(file, sessionId, responses) {
+  const out = [];
+  out.push(`# Responses — session ${sessionId}`);
+  out.push('');
+  out.push(
+    `_Captured ${new Date().toISOString()} — ${responses.length} agent replies._`,
+  );
+  out.push('');
+  out.push(
+    "> The agent's visible chat messages for this session, in full, in order.",
+  );
+  out.push('');
+  responses.forEach((r, i) => {
+    out.push(`## ${i + 1}.${r.ts ? ` (${new Date(r.ts).toISOString()})` : ''}`);
+    out.push('');
+    out.push(r.text);
+    out.push('');
   });
   fs.writeFileSync(file, out.join('\n'), 'utf8');
 }
