@@ -11,6 +11,11 @@ computation runs in a **Rust core compiled to WebAssembly**; the React frontend
 only orchestrates and renders. The same `core` crate is reused by the Tauri
 desktop build. There is **no analysis logic in JavaScript**.
 
+> **Deep dive:** for the full architecture, data-flow diagrams, the complete WASM
+> API surface, type contracts, the persistence model, and extension recipes, read
+> [references/architecture.md](./references/architecture.md). Load it when a task
+> needs more than the quick reference below.
+
 ## When to Use
 
 - Adding or modifying technical indicators (SMA, EMA, RSI, MACD, Bollinger, ATR)
