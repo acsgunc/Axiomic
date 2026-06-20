@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "type": "command",
+        "command": "node ./.github/skills/session-keeper/scripts/keep-session.mjs",
+        "timeout": 30
+      }
+    ]
+  }
+}
