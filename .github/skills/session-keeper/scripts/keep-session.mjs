@@ -42,16 +42,18 @@ async function main() {
     const outRoot = path.join(workspace, OUT_DIRNAME);
     const logsDir = path.join(outRoot, 'logs');
     const cmdDir = path.join(outRoot, 'commands');
+    const thinkDir = path.join(outRoot, 'thinking');
     fs.mkdirSync(logsDir, { recursive: true });
     fs.mkdirSync(cmdDir, { recursive: true });
+    fs.mkdirSync(thinkDir, { recursive: true });
 
     // 1. Copy the raw JSONL log (latest snapshot for this session).
     const logCopy = path.join(logsDir, `${sessionId}.jsonl`);
     fs.copyFileSync(logFile, logCopy);
     notes.push(`log → ${rel(workspace, logCopy)}`);
 
-    // 2. Parse and extract commands + touched files.
-    const { commands, files } = parseSession(logFile);
+    // 2. Parse and extract commands, thinking, and touched files.
+    const { commands, thoughts, files } = parseSession(logFile);
 
     if (commands.length) {
       writeShellScript(path.join(cmdDir, `${sessionId}.sh`), sessionId, commands);
@@ -59,6 +61,14 @@ async function main() {
       notes.push(`${commands.length} commands → ${rel(workspace, cmdDir)}`);
     } else {
       notes.push('no terminal commands found in this session');
+    }
+
+    // 3. Capture the agent's thinking/reasoning.
+    if (thoughts.length) {
+      writeThinkingMarkdown(path.join(thinkDir, `${sessionId}.md`), sessionId, thoughts);
+      notes.push(`${thoughts.length} thinking blocks → ${rel(workspace, thinkDir)}`);
+    } else {
+      notes.push('no thinking captured (model may not expose reasoning)');
     }
 
     ensureGitignore(outRoot);
@@ -152,15 +162,22 @@ function debugLogRoots() {
 // ---------------------------------------------------------------------------
 
 /**
- * Extracts terminal commands and touched files from a session JSONL.
- * Terminal commands come from dedicated `run_in_terminal` spans whose
- * `attrs.args` is a JSON string `{ command, explanation, goal, mode }`.
+ * Extracts terminal commands, the agent's thinking, and touched files from a
+ * session JSONL.
+ *
+ * - Terminal commands come from `run_in_terminal` spans whose `attrs.args` is a
+ *   JSON string `{ command, explanation, goal, mode }`.
+ * - Thinking comes from `agent_response` spans: `attrs.reasoning` holds the
+ *   reasoning text, and `attrs.response` (a JN string of assistant messages)
+ *   provides the visible text that followed, used as context.
  */
 function parseSession(logFile) {
   const lines = fs.readFileSync(logFile, 'utf8').split(/\r?\n/);
   const commands = [];
+  const thoughts = [];
   const files = new Set();
-  const seen = new Set();
+  const seenCmd = new Set();
+  const seenThought = new Set();
 
   for (const line of lines) {
     if (!line.trim()) continue;
@@ -171,6 +188,7 @@ function parseSession(logFile) {
       continue;
     }
     const name = span.name;
+    const type = span.type;
     const attrs = span.attrs || {};
 
     if (name === 'run_in_terminal') {
@@ -178,13 +196,27 @@ function parseSession(logFile) {
       const command = args?.command;
       if (typeof command === 'string' && command.trim()) {
         const key = command.trim();
-        if (!seen.has(key)) {
-          seen.add(key);
+        if (!seenCmd.has(key)) {
+          seenCmd.add(key);
           commands.push({
             command: key,
             goal: args.goal || '',
             explanation: args.explanation || '',
             mode: args.mode || '',
+            ts: span.ts || 0,
+          });
+        }
+      }
+    } else if (type === 'agent_response' || name === 'agent_response') {
+      const reasoning =
+        typeof attrs.reasoning === 'string' ? attrs.reasoning.trim() : '';
+      if (reasoning) {
+        const key = reasoning.slice(0, 200);
+        if (!seenThought.has(key)) {
+          seenThought.add(key);
+          thoughts.push({
+            reasoning,
+            text: firstAssistantText(attrs.response),
             ts: span.ts || 0,
           });
         }
@@ -201,7 +233,23 @@ function parseSession(logFile) {
   }
 
   commands.sort((a, b) => a.ts - b.ts);
-  return { commands, files: [...files] };
+  thoughts.sort((a, b) => a.ts - b.ts);
+  return { commands, thoughts, files: [...files] };
+}
+
+/** Pulls the first visible assistant text part from an `attrs.response` blob. */
+function firstAssistantText(response) {
+  const parsed = safeJson(response);
+  if (!Array.isArray(parsed)) return '';
+  for (const msg of parsed) {
+    if (!msg || !Array.isArray(msg.parts)) continue;
+    for (const p of msg.parts) {
+      if (p && p.type === 'text' && typeof p.content === 'string' && p.content.trim()) {
+        return p.content.trim();
+      }
+    }
+  }
+  return '';
 }
 
 // ---------------------------------------------------------------------------
@@ -256,6 +304,36 @@ function writeCommandsMarkdown(file, sessionId, commands, files) {
   fs.writeFileSync(file, out.join('\n'), 'utf8');
 }
 
+/** Writes the agent's captured thinking/reasoning, in order, with brief context. */
+function writeThinkingMarkdown(file, sessionId, thoughts) {
+  const out = [];
+  out.push(`# Thinking — session ${sessionId}`);
+  out.push('');
+  out.push(`_Captured ${new Date().toISOString()} — ${thoughts.length} reasoning blocks._`);
+  out.push('');
+  out.push(
+    '> Reasoning text as emitted by the model during this session, in order.',
+  );
+  out.push('');
+  thoughts.forEach((t, i) => {
+    out.push(`## ${i + 1}.${t.ts ? ` (${new Date(t.ts).toISOString()})` : ''}`);
+    out.push('');
+    out.push(t.reasoning);
+    out.push('');
+    if (t.text) {
+      out.push('<sub>Followed by:</sub>');
+      out.push('');
+      out.push(`> ${truncate(t.text, 280).replace(/\n+/g, ' ')}`);
+      out.push('');
+    }
+  });
+  fs.writeFileSync(file, out.join('\n'), 'utf8');
+}
+
+function truncate(s, n) {
+  return s.length > n ? s.slice(0, n - 1) + '…' : s;
+}
+
 /** Ignore the (potentially large) raw logs by default; keep extracted commands. */
 function ensureGitignore(outRoot) {
   const gi = path.join(outRoot, '.gitignore');
@@ -267,7 +345,7 @@ function ensureGitignore(outRoot) {
       '# Remove the next line if you want to commit full session logs.',
       'logs/',
       '',
-      '# Extracted commands (commands/) are intentionally tracked.',
+      '# Extracted commands/ and thinking/ are intentionally tracked.',
       '',
     ].join('\n'),
     'utf8',

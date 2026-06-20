@@ -1,0 +1,5 @@
+# Raw Copilot debug logs can be large; ignored by default.
+# Remove the next line if you want to commit full session logs.
+# logs/
+
+# Extracted commands (commands/) are intentionally tracked.

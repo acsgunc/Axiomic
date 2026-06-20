@@ -1,13 +1,13 @@
 ---
 name: session-keeper
-description: 'Capture Copilot chat session artifacts into the workspace: copy the raw debug JSONL log and extract every terminal command (and created/edited files) into runnable scripts. USE WHEN: the user wants to keep/save the commands or scripts run during a chat session; archive or export a Copilot session; auto-copy the copilot jsonl/debug log at the end of a prompt; reproduce what was run; review or re-run session commands; set up or troubleshoot the end-of-session capture hook. Pairs with the Stop hook at .github/hooks/session-keeper.json which runs automatically when a session ends.'
-argument-hint: 'e.g. "save this session''s commands now" or "set up session capture"'
+description: 'Capture Copilot chat session artifacts into the workspace: copy the raw debug JSONL log and extract every terminal command, the agent''s thinking/reasoning, and created/edited files into runnable scripts and readable notes. USE WHEN: the user wants to keep/save the commands or scripts run during a chat session; save/copy the agent''s thinking or reasoning to a file; archive or export a Copilot session; auto-copy the copilot jsonl/debug log at the end of a prompt; reproduce what was run; review or re-run session commands; set up or troubleshoot the end-of-session capture hook. Pairs with the Stop hook at .github/hooks/session-keeper.json which runs automatically when a session ends.'
+argument-hint: 'e.g. "save this session''s commands and thinking now" or "set up session capture"'
 ---
 
 # Session Keeper
 
 Persists what happened in a Copilot chat session into the workspace so commands
-are reproducible and the raw log is archived.
+are reproducible, the agent's reasoning is archived, and the raw log is kept.
 
 Outputs go to `<workspace>/.copilot-sessions/`:
 
@@ -16,15 +16,27 @@ Outputs go to `<workspace>/.copilot-sessions/`:
 ├── logs/<session>.jsonl       # raw Copilot debug log (snapshot)
 ├── commands/<session>.sh      # runnable list of terminal commands (verbatim)
 ├── commands/<session>.md      # readable commands + files created/edited
-└── .gitignore                 # ignores logs/ by default, tracks commands/
+├── thinking/<session>.md      # the agent's thinking/reasoning, in order
+└── .gitignore                 # ignores logs/ by default, tracks the rest
 ```
 
 ## When to Use
 
 - The user asks to **keep / save / export** the commands or scripts run in a chat.
+- The user asks to **save the agent's thinking / reasoning** to a file.
 - The user wants the **copilot jsonl / debug log copied** into the workspace.
 - Reproducing or reviewing what a session executed.
 - Setting up or debugging the automatic end-of-session capture.
+
+## Does the log contain thinking?
+
+Yes. In the Copilot debug `main.jsonl`, reasoning is stored on `agent_response`
+spans as `attrs.reasoning` (and is also embedded in `llm_request` payloads as
+assistant parts of `type: "reasoning"`). Session Keeper reads
+`agent_response.attrs.reasoning`, de-duplicates, orders by timestamp, and writes
+`thinking/<session>.md`, pairing each block with the visible message that
+followed. If the active model does not expose reasoning, the thinking file is
+simply skipped.
 
 ## How It Works (automatic)
 
@@ -37,7 +49,8 @@ session ends ("end of prompt execution"). The script:
    Code's `workspaceStorage/*/GitHub.copilot-chat/debug-logs/`.
 2. Copies it to `.copilot-sessions/logs/<session>.jsonl`.
 3. Parses `run_in_terminal` spans → writes `<session>.sh` (executable) and
-   `<session>.md`, and lists `create_file` / `replace_string_in_file` targets.
+   `<session>.md`, lists `create_file` / `replace_string_in_file` targets, and
+   writes `thinking/<session>.md` from `agent_response.attrs.reasoning`.
 
 The hook is non-blocking and never fails a session; it reports a short summary
 via `systemMessage`.
