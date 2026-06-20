@@ -57,13 +57,19 @@ The **summary** is the high-level chat recap. It includes:
 
 ## Does the log contain thinking?
 
-Yes. In the Copilot debug `main.jsonl`, reasoning is stored on `agent_response`
-spans as `attrs.reasoning` (and is also embedded in `llm_request` payloads as
-assistant parts of `type: "reasoning"`). Session Keeper reads
-`agent_response.attrs.reasoning`, de-duplicates, orders by timestamp, and writes
+It depends on the **model**, but capture is **model-agnostic**. In the Copilot
+debug `main.jsonl`, reasoning (when a model emits it) is stored on
+`agent_response` spans as `attrs.reasoning`. Session Keeper reads that field,
+normalizes whatever shape the model used (a plain string, or structured
+reasoning blocks), de-duplicates, orders by timestamp, and writes
 `thinking/<session>.md`, pairing each block with the visible message that
-followed. If the active model does not expose reasoning, the thinking file is
-simply skipped.
+followed.
+
+Because extraction keys off the span structure (not the model name), it works
+for any model — Claude, GPT, Gemini, etc. Models that don't surface reasoning
+(e.g. `gpt-4o-mini`, internal router models) simply produce no `attrs.reasoning`,
+so the thinking file is skipped for that session; everything else (prompts,
+commands, models, files) is still captured.
 
 ## How It Works (automatic)
 
@@ -134,3 +140,9 @@ bash .copilot-sessions/commands/<session>.sh
 - Raw logs are git-ignored by default; the extracted `commands/` are tracked so
   the useful, small artifacts are kept in version control.
 - Terminal commands are de-duplicated and ordered by timestamp.
+- **Model-agnostic:** parsing keys off span types (`user_message`, `tool_call`,
+  `run_in_terminal`, `agent_response`, `llm_request`), not model names, so it
+  works for any model. Sessions that switch models mid-way are handled — the
+  summary's "Models used" table aggregates per model. Reasoning is captured for
+  any model that emits it; models that don't simply have an empty thinking file.
+

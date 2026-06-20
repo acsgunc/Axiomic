@@ -426,8 +426,11 @@ function parseSession(logFile) {
         }
       }
     } else if (type === 'agent_response' || name === 'agent_response') {
-      const reasoning =
-        typeof attrs.reasoning === 'string' ? attrs.reasoning.trim() : '';
+      // Reasoning lives on `attrs.reasoning` for every model that exposes it.
+      // Its shape can vary by model (a plain string, or an array/object of
+      // reasoning blocks), so normalize to text. Models that don't surface
+      // reasoning simply yield an empty string here and are skipped.
+      const reasoning = normalizeReasoning(attrs.reasoning);
       if (reasoning) {
         const key = reasoning.slice(0, 200);
         if (!seenThought.has(key)) {
@@ -467,16 +470,59 @@ function parseSession(logFile) {
   };
 }
 
-/** Pulls the first visible assistant text part from an `attrs.response` blob. */
+/**
+ * Normalizes a model's reasoning blob to plain text.
+ *
+ * Different models emit reasoning differently: most as a single string, but
+ * some as an array of `{ text }` / `{ content }` blocks or a wrapping object.
+ * We coalesce all of these into one trimmed string (empty if there's nothing
+ * usable), so thinking capture works regardless of the active model.
+ */
+function normalizeReasoning(value) {
+  if (value == null) return '';
+  if (typeof value === 'string') return value.trim();
+  // A JSON string that itself encodes structured reasoning.
+  if (typeof value === 'object') return collectText(value).trim();
+  return '';
+}
+
+/** Recursively pulls human-readable text out of an arbitrary reasoning/response blob. */
+function collectText(node) {
+  if (node == null) return '';
+  if (typeof node === 'string') {
+    // Unwrap stringified JSON payloads transparently.
+    const inner = safeJson(node);
+    return inner && typeof inner === 'object' ? collectText(inner) : node;
+  }
+  if (Array.isArray(node)) return node.map(collectText).filter(Boolean).join('\n');
+  if (typeof node === 'object') {
+    // Skip tool-call parts; keep prose-bearing fields.
+    if (node.type && /tool/i.test(String(node.type))) return '';
+    const parts = [];
+    for (const key of ['text', 'content', 'reasoning', 'parts', 'value']) {
+      if (key in node) parts.push(collectText(node[key]));
+    }
+    return parts.filter(Boolean).join('\n');
+  }
+  return '';
+}
+
+/** Pulls the first visible assistant text from an `attrs.response` blob (any model). */
 function firstAssistantText(response) {
+  if (typeof response !== 'string') return '';
   const parsed = safeJson(response);
-  if (!Array.isArray(parsed)) return '';
+  // Some models/turns log the response as a plain (non-JSON) string.
+  if (parsed == null) return response.trim();
+  if (!Array.isArray(parsed)) return collectText(parsed).trim();
   for (const msg of parsed) {
     if (!msg || !Array.isArray(msg.parts)) continue;
     for (const p of msg.parts) {
-      if (p && p.type === 'text' && typeof p.content === 'string' && p.content.trim()) {
-        return p.content.trim();
-      }
+      if (!p || (p.type && /tool/i.test(String(p.type)))) continue;
+      const text =
+        (typeof p.content === 'string' && p.content) ||
+        (typeof p.text === 'string' && p.text) ||
+        '';
+      if (text.trim()) return text.trim();
     }
   }
   return '';
