@@ -15,10 +15,19 @@
  * It is intentionally defensive: any failure is swallowed and reported via the
  * hook's JSON output so it can never break a chat session.
  *
+ * Supported IDEs:
+ *   - VS Code + VS Code Insiders: full extraction from the structured Copilot
+ *     debug `main.jsonl` (spans → prompts, models, tools, commands, thinking).
+ *   - Visual Studio: copies the GitHub Copilot Chat trace log
+ *     (`%LOCALAPPDATA%\Temp\VSGitHubCopilotLogs\*.chat.log`) and extracts the
+ *     metadata it contains. Visual Studio does not emit the structured span
+ *     format, so command/thinking/prompt extraction is VS Code-only.
+ *
  * Resolution order for the log:
  *   1. $VSCODE_TARGET_SESSION_LOG  (folder or file — most reliable)
  *   2. session id parsed from the hook's stdin JSON
- *   3. newest `main.jsonl` across all VS Code workspaceStorage debug-logs
+ *   3. newest structured `main.jsonl` across all VS Code workspaceStorage
+ *      debug-logs; if none exist, the newest Visual Studio `*.chat.log`.
  */
 
 import fs from 'node:fs';
@@ -36,21 +45,40 @@ async function main() {
     const input = safeJson(stdin) ?? {};
 
     const workspace = resolveWorkspace(input);
-    const { logFile, sessionId } = resolveLog(input);
+    const { logFile, sessionId, kind } = resolveLog(input);
 
     if (!logFile || !fs.existsSync(logFile)) {
-      return done(true, 'Session Keeper: no debug log found to capture.');
+      return done(true, 'Session Keeper: no chat log found to capture.');
     }
 
     const outRoot = path.join(workspace, OUT_DIRNAME);
     const logsDir = path.join(outRoot, 'logs');
-    const cmdDir = path.join(outRoot, 'commands');
-    const thinkDir = path.join(outRoot, 'thinking');
     const summaryDir = path.join(outRoot, 'summary');
     fs.mkdirSync(logsDir, { recursive: true });
+    fs.mkdirSync(summaryDir, { recursive: true });
+
+    // Visual Studio uses a different, unstructured trace-log format. Capture
+    // what it provides (the raw log + metadata) and stop early.
+    if (kind === 'visualstudio') {
+      const logCopy = path.join(logsDir, `${sessionId}.chat.log`);
+      fs.copyFileSync(logFile, logCopy);
+      notes.push(`Visual Studio log → ${rel(workspace, logCopy)}`);
+
+      const vs = parseVisualStudioLog(logFile);
+      writeVisualStudioSummary(
+        path.join(summaryDir, `${sessionId}.md`),
+        sessionId,
+        vs,
+      );
+      notes.push(`summary → ${rel(workspace, summaryDir)}`);
+      ensureGitignore(outRoot);
+      return done(true, `Session Keeper (Visual Studio): ${notes.join('; ')}.`);
+    }
+
+    const cmdDir = path.join(outRoot, 'commands');
+    const thinkDir = path.join(outRoot, 'thinking');
     fs.mkdirSync(cmdDir, { recursive: true });
     fs.mkdirSync(thinkDir, { recursive: true });
-    fs.mkdirSync(summaryDir, { recursive: true });
 
     // 1. Copy the raw JSONL log (latest snapshot for this session).
     const logCopy = path.join(logsDir, `${sessionId}.jsonl`);
@@ -124,9 +152,25 @@ function resolveLog(input) {
   if (env && fs.existsSync(env)) {
     const stat = fs.statSync(env);
     if (stat.isDirectory()) {
-      return { logFile: path.join(env, 'main.jsonl'), sessionId: path.basename(env) };
+      return {
+        logFile: path.join(env, 'main.jsonl'),
+        sessionId: path.basename(env),
+        kind: 'vscode',
+      };
     }
-    return { logFile: env, sessionId: path.basename(path.dirname(env)) };
+    // A file may be a VS Code `main.jsonl` or a Visual Studio `*.chat.log`.
+    if (/\.chat\.log$/i.test(env)) {
+      return {
+        logFile: env,
+        sessionId: visualStudioSessionId(env),
+        kind: 'visualstudio',
+      };
+    }
+    return {
+      logFile: env,
+      sessionId: path.basename(path.dirname(env)),
+      kind: 'vscode',
+    };
   }
 
   // 2. Session id from stdin, matched against known debug-logs.
@@ -138,9 +182,12 @@ function resolveLog(input) {
     if (hit) return hit;
   }
 
-  // 3. Newest log overall.
-  candidates.sort((a, b) => b.mtime - a.mtime);
-  return candidates[0] ?? { logFile: null, sessionId: 'unknown' };
+  // 3. Newest log overall, preferring structured VS Code logs over Visual
+  //    Studio trace logs (the former yield far richer artifacts).
+  const vscode = candidates.filter((c) => c.kind === 'vscode');
+  const pool = vscode.length ? vscode : candidates;
+  pool.sort((a, b) => b.mtime - a.mtime);
+  return pool[0] ?? { logFile: null, sessionId: 'unknown', kind: 'vscode' };
 }
 
 /**
@@ -178,7 +225,7 @@ function resolveTranscript(logFile, sessionId) {
   return null;
 }
 
-/** Returns every `main.jsonl` under any VS Code workspaceStorage debug-logs dir. */
+/** Returns every known chat log across VS Code, VS Code Insiders, and Visual Studio. */
 function findAllLogs() {
   const roots = debugLogRoots();
   const out = [];
@@ -191,12 +238,76 @@ function findAllLogs() {
       for (const sessionId of safeReaddir(base)) {
         const logFile = path.join(base, sessionId, 'main.jsonl');
         if (safeExists(logFile)) {
-          out.push({ logFile, sessionId, mtime: safeMtime(logFile) });
+          out.push({
+            logFile,
+            sessionId,
+            mtime: safeMtime(logFile),
+            kind: 'vscode',
+          });
         }
       }
     }
   }
+  out.push(...findVisualStudioLogs());
   return out;
+}
+
+/**
+ * Returns every Visual Studio GitHub Copilot Chat trace log.
+ *
+ * Visual Studio writes one `*.chat.log` per IDE session to
+ *   %LOCALAPPDATA%\Temp\VSGitHubCopilotLogs\<timestamp>_VSGitHubCopilot.chat.log
+ * (the `Temp` dir varies; we honour $TEMP/$TMP too). The format is a plain-text
+ * diagnostic trace, not the structured span JSONL VS Code emits.
+ */
+function findVisualStudioLogs() {
+  const out = [];
+  for (const dir of visualStudioLogRoots()) {
+    if (!safeExists(dir)) continue;
+    for (const name of safeReaddir(dir)) {
+      if (!/\.chat\.log$/i.test(name)) continue;
+      const logFile = path.join(dir, name);
+      if (!safeExists(logFile)) continue;
+      out.push({
+        logFile,
+        sessionId: visualStudioSessionId(logFile),
+        mtime: safeMtime(logFile),
+        kind: 'visualstudio',
+      });
+    }
+  }
+  return out;
+}
+
+/** Candidate directories that hold Visual Studio Copilot Chat trace logs. */
+function visualStudioLogRoots() {
+  const dirs = new Set();
+  const tempBases = [
+    process.env.TEMP,
+    process.env.TMP,
+    process.platform === 'win32'
+      ? path.join(os.homedir(), 'AppData', 'Local', 'Temp')
+      : os.tmpdir(),
+  ].filter(Boolean);
+  for (const base of tempBases) {
+    dirs.add(path.join(base, 'VSGitHubCopilotLogs'));
+  }
+  return [...dirs];
+}
+
+/**
+ * Derives a stable session id for a Visual Studio chat log: the `Session: <guid>`
+ * recorded inside it when available, otherwise the log file's basename.
+ */
+function visualStudioSessionId(logFile) {
+  try {
+    const head = fs.readFileSync(logFile, 'utf8').slice(0, 64 * 1024);
+    const m = head.match(/Session:\s*([0-9a-fA-F-]{36})/);
+    if (m) return `vs-${m[1]}`;
+  } catch {
+    // fall through to filename
+  }
+  return `vs-${path.basename(logFile).replace(/\.chat\.log$/i, '')}`;
 }
 
 /** Platform-specific VS Code `User/workspaceStorage` roots (stable + Insiders). */
@@ -371,9 +482,87 @@ function firstAssistantText(response) {
   return '';
 }
 
+/**
+ * Extracts the metadata a Visual Studio Copilot Chat trace log exposes.
+ *
+ * VS logs are unstructured diagnostic traces (`[ts Category Level] message`),
+ * so they do not contain the prompts, tool calls, terminal commands, or
+ * reasoning VS Code emits. We pull what is reliably present: the bracketed
+ * start/end timestamps, the Copilot chat / Visual Studio versions, and the
+ * session GUID.
+ */
+function parseVisualStudioLog(logFile) {
+  const meta = { copilotVersion: '', vsVersion: '', sessionGuid: '' };
+  let firstTs = 0;
+  let lastTs = 0;
+  let text = '';
+  try {
+    text = fs.readFileSync(logFile, 'utf8');
+  } catch {
+    return { meta, firstTs, lastTs };
+  }
+
+  const tsRe = /\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3})\b/g;
+  let m;
+  while ((m = tsRe.exec(text))) {
+    const t = Date.parse(m[1].replace(' ', 'T'));
+    if (Number.isNaN(t)) continue;
+    if (!firstTs || t < firstTs) firstTs = t;
+    if (t > lastTs) lastTs = t;
+  }
+
+  // e.g. "Copilot chat version 18.7.1194+... (18.7.1194.57088). VS:
+  //       VisualStudio.18.Preview/18.7.0-insiders+11822.327. Session: <guid>."
+  const ver = text.match(/Copilot chat version\s+([^\s(]+)/);
+  if (ver) meta.copilotVersion = ver[1];
+  const vs = text.match(/VS:\s*([^\s.]+(?:\.[^\s]+)*?)\.\s*Session:/);
+  if (vs) meta.vsVersion = vs[1];
+  const guid = text.match(/Session:\s*([0-9a-fA-F-]{36})/);
+  if (guid) meta.sessionGuid = guid[1];
+
+  return { meta, firstTs, lastTs };
+}
+
 // ---------------------------------------------------------------------------
 // Output writers
 // ---------------------------------------------------------------------------
+
+/**
+ * Writes a metadata summary for a Visual Studio session and notes the format
+ * limitation (no structured prompts/commands/thinking are available from VS).
+ */
+function writeVisualStudioSummary(file, sessionId, vs) {
+  const { meta } = vs;
+  const out = [];
+  out.push(`# Session summary — ${sessionId}`);
+  out.push('');
+  out.push('**Source:** Visual Studio (GitHub Copilot Chat)');
+  const started = vs.firstTs ? new Date(vs.firstTs).toISOString() : 'unknown';
+  const ended = vs.lastTs ? new Date(vs.lastTs).toISOString() : 'unknown';
+  out.push(`**Started:** ${started}  ·  **Ended:** ${ended}`);
+  if (vs.firstTs && vs.lastTs) {
+    out.push(`**Duration:** ${formatDuration(vs.lastTs - vs.firstTs)}`);
+  }
+  if (meta.copilotVersion || meta.vsVersion) {
+    out.push(
+      `**Environment:** Copilot Chat ${meta.copilotVersion || '?'} · Visual Studio ${
+        meta.vsVersion || '?'
+      }`,
+    );
+  }
+  if (meta.sessionGuid) out.push(`**Session GUID:** ${meta.sessionGuid}`);
+  out.push('');
+  out.push('> Visual Studio records an unstructured diagnostic trace rather than');
+  out.push('> the structured span log VS Code emits, so user prompts, tool calls,');
+  out.push('> terminal commands, and reasoning cannot be extracted. The raw trace');
+  out.push('> log is preserved under `logs/` for reference.');
+  out.push('');
+  out.push('## Related artifacts');
+  out.push('');
+  out.push(`- Raw log: \`logs/${sessionId}.chat.log\``);
+  out.push('');
+  fs.writeFileSync(file, out.join('\n'), 'utf8');
+}
 
 /**
  * Writes the high-level session summary: the user's prompts/requests, models

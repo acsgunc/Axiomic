@@ -1,6 +1,6 @@
 ---
 name: session-keeper
-description: 'Capture Copilot chat session artifacts into the workspace: copy the raw debug JSONL log and the conversation transcript JSONL, and extract a session summary (user prompts, models, tool-usage, files), every terminal command, the agent''s thinking/reasoning, and created/edited files into runnable scripts and readable notes. USE WHEN: the user wants a summary of a Copilot chat session; keep/save the commands or scripts run during a chat session; save/copy the agent''s thinking or reasoning to a file; copy the copilot transcript/jsonl/debug log into the workspace; archive or export a Copilot session; auto-copy the copilot jsonl/transcript at the end of a prompt; reproduce what was run; review or re-run session commands; set up or troubleshoot the end-of-session capture hook. Pairs with the Stop hook at .github/hooks/session-keeper.json which runs automatically when a session ends.'
+description: 'Capture Copilot chat session artifacts into the workspace across VS Code, VS Code Insiders, and Visual Studio: copy the raw debug JSONL log and the conversation transcript JSONL, and extract a session summary (user prompts, models, tool-usage, files), every terminal command, the agent''s thinking/reasoning, and created/edited files into runnable scripts and readable notes (Visual Studio logs are unstructured, so its capture is the raw trace log plus a metadata summary). USE WHEN: the user wants a summary of a Copilot chat session; keep/save the commands or scripts run during a chat session; save/copy the agent''s thinking or reasoning to a file; copy the copilot transcript/jsonl/debug log into the workspace; archive or export a Copilot session; auto-copy the copilot jsonl/transcript at the end of a prompt; reproduce what was run; review or re-run session commands; set up or troubleshoot the end-of-session capture hook. Pairs with the Stop hook at .github/hooks/session-keeper.json which runs automatically when a session ends.'
 argument-hint: 'e.g. "summarize this session" or "save this session''s commands and thinking now" or "set up session capture"'
 ---
 
@@ -8,6 +8,17 @@ argument-hint: 'e.g. "summarize this session" or "save this session''s commands 
 
 Persists what happened in a Copilot chat session into the workspace so commands
 are reproducible, the agent's reasoning is archived, and the raw log is kept.
+
+Works across **VS Code**, **VS Code Insiders**, and **Visual Studio**:
+
+- **VS Code / VS Code Insiders** — full extraction from Copilot's structured
+  debug log (`main.jsonl`): prompts, models, tool usage, terminal commands, the
+  agent's thinking, and touched files.
+- **Visual Studio** — Visual Studio records an *unstructured* diagnostic trace
+  (`%LOCALAPPDATA%\Temp\VSGitHubCopilotLogs\*.chat.log`) rather than the span
+  log VS Code emits, so prompts/commands/thinking cannot be extracted. Session
+  Keeper copies the raw trace log and writes a metadata summary (start/end time,
+  duration, Copilot Chat + Visual Studio versions, session GUID).
 
 Outputs go to `<workspace>/.copilot-sessions/`:
 
@@ -62,7 +73,8 @@ session ends ("end of prompt execution"). The script:
 
 1. Finds this workspace's Copilot debug log (`main.jsonl`) via
    `$VSCODE_TARGET_SESSION_LOG`, the hook's stdin session id, or by scanning VS
-   Code's `workspaceStorage/*/GitHub.copilot-chat/debug-logs/`.
+   Code's `workspaceStorage/*/GitHub.copilot-chat/debug-logs/`. If no VS Code log
+   exists, it falls back to the newest Visual Studio `*.chat.log`.
 2. Copies it to `.copilot-sessions/logs/<session>.jsonl`, and copies the sibling
    conversation transcript
    (`GitHub.copilot-chat/transcripts/<session>.jsonl`) to
@@ -71,6 +83,11 @@ session ends ("end of prompt execution"). The script:
    counts), parses `run_in_terminal` spans → writes `<session>.sh` (executable)
    and `<session>.md`, lists `create_file` / `replace_string_in_file` targets, and
    writes `thinking/<session>.md` from `agent_response.attrs.reasoning`.
+
+The Stop hook is a **VS Code Copilot** feature, so automatic capture only fires
+in VS Code / VS Code Insiders. In **Visual Studio**, run the script manually (see
+below); it detects and captures the Visual Studio trace log instead, writing
+`logs/<session>.chat.log` plus a metadata-only `summary/<session>.md`.
 
 The hook is non-blocking and never fails a session; it reports a short summary
 via `systemMessage`.
@@ -81,8 +98,16 @@ via `systemMessage`.
 # Capture the most recent session for the current workspace:
 node ./.github/skills/session-keeper/scripts/keep-session.mjs
 
-# Capture a specific session log explicitly:
+# Capture a specific session log explicitly (VS Code folder/main.jsonl, or a
+# Visual Studio *.chat.log file):
 VSCODE_TARGET_SESSION_LOG="/path/to/debug-logs/<sessionId>" \
+  node ./.github/skills/session-keeper/scripts/keep-session.mjs
+```
+
+In **Visual Studio**, point the script at the trace log directly:
+
+```bash
+VSCODE_TARGET_SESSION_LOG="%LOCALAPPDATA%/Temp/VSGitHubCopilotLogs/<stamp>_VSGitHubCopilot.chat.log" \
   node ./.github/skills/session-keeper/scripts/keep-session.mjs
 ```
 
