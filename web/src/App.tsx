@@ -11,22 +11,62 @@ import { cn } from './lib/utils';
 import type { Candle } from './types';
 
 const TIMEFRAMES = [
-  { id: '1D', days: 1 },
-  { id: '1W', days: 7 },
-  { id: '1M', days: 30 },
-  { id: '3M', days: 90 },
-  { id: '1Y', days: 365 },
-  { id: 'ALL', days: Infinity },
+  { id: '1D' },
+  { id: '1W' },
+  { id: '1M' },
+  { id: '3M' },
+  { id: '1Y' },
+  { id: 'ALL' },
 ] as const;
 
 type TimeframeId = (typeof TIMEFRAMES)[number]['id'];
 
-/** Filters candles to the trailing window for the selected timeframe. */
-function filterTimeframe(candles: Candle[], days: number): Candle[] {
-  if (!Number.isFinite(days) || candles.length === 0) return candles;
-  const last = candles[candles.length - 1].time;
-  const cutoff = last - days * 86_400;
-  return candles.filter((c) => c.time >= cutoff);
+/**
+ * Maps a candle timestamp (seconds) to a bucket key for the chosen interval.
+ * `1D`/`ALL` keep one candle per source bar; coarser intervals group bars by
+ * calendar week/month/quarter/year so the full history is always visible.
+ */
+function bucketKey(time: number, id: TimeframeId): number {
+  const d = new Date(time * 1000);
+  switch (id) {
+    case '1W':
+      return Math.floor(time / 604_800); // fixed 7-day buckets from epoch
+    case '1M':
+      return d.getUTCFullYear() * 12 + d.getUTCMonth();
+    case '3M':
+      return d.getUTCFullYear() * 4 + Math.floor(d.getUTCMonth() / 3);
+    case '1Y':
+      return d.getUTCFullYear();
+    default:
+      return time; // 1D / ALL: one bucket per source candle
+  }
+}
+
+/**
+ * Aggregates daily source candles into the selected bar interval. Open is the
+ * first bar's open, close the last bar's close, high/low the extremes, and
+ * volume the sum. Assumes candles are sorted ascending by time.
+ */
+function resampleCandles(candles: Candle[], id: TimeframeId): Candle[] {
+  if (id === '1D' || id === 'ALL' || candles.length === 0) return candles;
+  const out: Candle[] = [];
+  let cur: Candle | null = null;
+  let curKey: number | null = null;
+  for (const c of candles) {
+    const key = bucketKey(c.time, id);
+    if (cur === null || key !== curKey) {
+      if (cur) out.push(cur);
+      cur = { ...c };
+      curKey = key;
+    } else {
+      cur.high = Math.max(cur.high, c.high);
+      cur.low = Math.min(cur.low, c.low);
+      cur.close = c.close;
+      cur.volume += c.volume;
+    }
+  }
+  if (cur) out.push(cur);
+  return out;
 }
 
 export default function App() {
@@ -38,17 +78,16 @@ export default function App() {
   const error = useStore((s) => s.error);
   const clearError = useStore((s) => s.clearError);
   const storageReady = useStore((s) => s.storageReady);
-  const [timeframe, setTimeframe] = useState<TimeframeId>('1Y');
+  const [timeframe, setTimeframe] = useState<TimeframeId>('1D');
 
   useEffect(() => {
     preloadEngine();
     void init();
   }, [init]);
 
-  const days = TIMEFRAMES.find((t) => t.id === timeframe)?.days ?? Infinity;
   const candles = useMemo(
-    () => filterTimeframe(allCandles, days),
-    [allCandles, days],
+    () => resampleCandles(allCandles, timeframe),
+    [allCandles, timeframe],
   );
 
   const last = candles[candles.length - 1];

@@ -63,7 +63,15 @@ export function CandleChart({ candles, indicators }: Props) {
       grid: { vertLines: { color: GRID }, horzLines: { color: GRID } },
       crosshair: { mode: CrosshairMode.Normal },
       rightPriceScale: { borderColor: GRID },
-      timeScale: { borderColor: GRID, timeVisible: false },
+      timeScale: {
+        borderColor: GRID,
+        timeVisible: true,
+        secondsVisible: false,
+        rightOffset: 6,
+        barSpacing: 8,
+      },
+      handleScroll: true,
+      handleScale: true,
       autoSize: true,
     });
     const candleSeries = chart.addCandlestickSeries({
