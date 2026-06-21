@@ -103,6 +103,9 @@ tests in [core/src/indicators.rs](../core/src/indicators.rs) and
 - `bollinger` — band ordering `upper >= middle >= lower`; middle band equals the
   SMA; period < 2 yields all-`None`.
 - `atr` — non-negative output; insufficient data returns `None`.
+- `heikin_ashi` — output aligns 1:1 with input; first bar seeds open/close from
+  the raw bar; HA high/low bound HA open/close; volume is carried over; each
+  subsequent HA open is the average of the prior HA open and close.
 
 **Backtest** ([core/src/backtest.rs](../core/src/backtest.rs))
 - Produces well-formed metrics (equity curve, Sharpe, drawdown, win rate).
@@ -198,12 +201,22 @@ modules are mocked with `vi.mock` in the store and component tests.
 ### Chart timeframes
 
 [web/src/lib/\_\_tests\_\_/timeframe.test.ts](../web/src/lib/__tests__/timeframe.test.ts)
-- `bucketKey` — `1D`/`ALL` keep one bucket per candle; `1W` groups fixed 7-day
-  windows; `1M`/`3M`/`1Y` group by calendar month/quarter/year.
-- `resampleCandles` — returns the source unchanged for `1D`/`ALL`, handles empty
-  input, collapses dailies into fewer weekly bars, and aggregates with
-  first-open / last-close / extreme high-low / summed volume without mutating
-  the source.
+- `TIMEFRAME_DAYS` — every timeframe id maps to a lookback (`null` only for
+  `ALL`); spot-checks `1Y`=365 and `1D`=1.
+- `visibleRangeFor` — `null` for `ALL` and empty input; the `1Y` window ends at
+  the last bar and starts ~365 days back while keeping older data draggable;
+  clamps the start to the first candle when the lookback exceeds the history;
+  guarantees ≥ 2 visible bars for tiny windows; and produces progressively
+  wider windows for longer timeframes.
+
+### Chart helpers
+
+[web/src/lib/\_\_tests\_\_/chart.test.ts](../web/src/lib/__tests__/chart.test.ts)
+- `isOhlcType` — candles/bars/heikin-ashi are OHLC; line/area are close-based;
+  every chart type has a human label.
+- `nextDrawingId` — unique, prefixed, monotonically increasing ids.
+- `downloadChartsScreenshot` — ignores null charts (no-op when none present),
+  and stacks chart screenshots into one canvas before triggering a download.
 
 ### Data providers
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CandleChart } from './components/CandleChart';
 import { Watchlist } from './components/Watchlist';
 import { IndicatorPanel } from './components/IndicatorPanel';
@@ -8,7 +8,7 @@ import { Panel, Button } from './components/ui';
 import { useStore, useActiveCandles } from './store/useStore';
 import { preloadEngine } from './engine';
 import { cn } from './lib/utils';
-import { TIMEFRAMES, resampleCandles, type TimeframeId } from './lib/timeframe';
+import { TIMEFRAMES, type TimeframeId } from './lib/timeframe';
 
 export default function App() {
   const init = useStore((s) => s.init);
@@ -19,17 +19,14 @@ export default function App() {
   const error = useStore((s) => s.error);
   const clearError = useStore((s) => s.clearError);
   const storageReady = useStore((s) => s.storageReady);
-  const [timeframe, setTimeframe] = useState<TimeframeId>('1D');
+  const [timeframe, setTimeframe] = useState<TimeframeId>('1Y');
 
   useEffect(() => {
     preloadEngine();
     void init();
   }, [init]);
 
-  const candles = useMemo(
-    () => resampleCandles(allCandles, timeframe),
-    [allCandles, timeframe],
-  );
+  const candles = allCandles;
 
   const last = candles[candles.length - 1];
 
@@ -107,7 +104,7 @@ export default function App() {
               Loading…
             </div>
           ) : candles.length ? (
-            <CandleChart candles={candles} indicators={indicators} symbol={activeSymbol} />
+            <CandleChart candles={candles} indicators={indicators} symbol={activeSymbol} timeframe={timeframe} />
           ) : (
             <div className="flex h-full items-center justify-center text-slate-500">
               No data. Upload a CSV or add a symbol.

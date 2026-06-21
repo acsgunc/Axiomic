@@ -1,0 +1,73 @@
+# TradingView-Style Charts
+
+> Candles / Bars / Line / Area / Heikin-Ashi, a volume histogram, a
+> crosshair-following OHLC + indicator legend, RSI & MACD sub-panes, drawing
+> tools, price-scale modes, and PNG export — built on TradingView's
+> `lightweight-charts`.
+
+## Summary
+
+The center chart is a full, TradingView-style charting surface. A toolbar above
+the chart switches the price-series type, price-scale mode, volume, crosshair,
+and drawing tools, and exports the chart as a PNG. RSI and MACD render in linked
+sub-panes that stay time-synced with the main chart. All price math — including
+the Heikin-Ashi transform — runs in the Rust/WASM core.
+
+## Status
+
+- **Added** — 2026-06-21
+
+## How to use
+
+Open the web app, select a symbol, and use the toolbar above the chart:
+
+- **Chart type** (dropdown): `Candles`, `Bars`, `Line`, `Area`, `Heikin-Ashi`.
+- **Price scale**: `Lin` (linear), `Log` (logarithmic), `%` (percentage).
+- **Drawing tools**: `╱ Trend` (click two points; a rubber-band preview follows
+  the cursor), `— H-Line` (click once to drop a horizontal line). Click any
+  drawing to remove it, or `Clear` to remove all.
+- **Vol** toggles the up/down-colored volume histogram.
+- **✛** toggles the crosshair; **Fit** fits all data to view.
+- **⤓ PNG** downloads the chart (main + RSI + MACD panes stacked) as a PNG.
+
+The legend in the top-left follows the crosshair, showing O/H/L/C, the bar's
+percentage change, and live values for each enabled overlay (SMA/EMA/Bollinger).
+Enable **RSI** and **MACD** in the Indicators panel to show their sub-panes.
+
+```ts
+// CandleChart is driven by candles + indicator config + the active symbol/timeframe.
+<CandleChart
+  candles={candles}
+  indicators={indicators}
+  symbol={activeSymbol}
+  timeframe={timeframe}
+/>
+```
+
+```ts
+// Heikin-Ashi candles are computed in Rust and exposed via the engine bridge.
+const ha = await engine.heikinAshi(candles); // Candle[] (same shape as input)
+```
+
+## Notes / caveats
+
+- **All math stays in Rust.** Heikin-Ashi is `core/src/indicators.rs::heikin_ashi`,
+  exposed through `lib.rs` as `heikin_ashi` and surfaced as `engine.heikinAshi`.
+  Rebuild the WASM bundle (`pnpm --dir web wasm`) after editing the core.
+- Volume uses a dedicated overlaid price scale (`scaleMargins` pin it to the
+  bottom ~18% of the main pane).
+- The drawing layer is an SVG overlay positioned with the chart's
+  `logicalToCoordinate` / `priceToCoordinate`, so drawings reproject correctly
+  on pan, zoom, resize, and data changes. The SVG is not part of the PNG export
+  (the screenshot captures the chart canvas only).
+- RSI/MACD panes are separate `lightweight-charts` instances kept in sync via
+  `subscribeVisibleLogicalRangeChange`.
+
+## Source
+
+- [web/src/components/CandleChart.tsx](../../web/src/components/CandleChart.tsx) — chart, panes, legend, drawing layer
+- [web/src/components/ChartToolbar.tsx](../../web/src/components/ChartToolbar.tsx) — toolbar controls
+- [web/src/lib/chart.ts](../../web/src/lib/chart.ts) — chart types, ids, PNG export helper
+- [web/src/engine.ts](../../web/src/engine.ts) — `heikinAshi` bridge
+- [core/src/indicators.rs](../../core/src/indicators.rs) — `heikin_ashi`
+- [core/src/lib.rs](../../core/src/lib.rs) — `heikin_ashi` WASM export

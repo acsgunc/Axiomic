@@ -28,11 +28,14 @@ import {
   type DrawTool,
   type ScaleMode,
 } from '../lib/chart';
+import { visibleRangeFor, type TimeframeId } from '../lib/timeframe';
 
 interface Props {
   candles: Candle[];
   indicators: IndicatorConfig[];
   symbol?: string;
+  /** Active zoom/lookback preset; sets the initial visible window. */
+  timeframe?: TimeframeId;
 }
 
 const CHART_BG = '#0b0f17';
@@ -89,7 +92,7 @@ const baseLayout = {
  * drawing layer (trend & horizontal lines), price-scale modes, and PNG export.
  * All price math (including Heikin-Ashi) is delegated to the Rust core.
  */
-export function CandleChart({ candles, indicators, symbol = '' }: Props) {
+export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL' }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<SVGSVGElement>(null);
   const rsiContainerRef = useRef<HTMLDivElement>(null);
@@ -165,6 +168,8 @@ export function CandleChart({ candles, indicators, symbol = '' }: Props) {
         secondsVisible: false,
         rightOffset: 6,
         barSpacing: 8,
+        // Allow a long window (e.g. a full year) to compress into a narrow pane.
+        minBarSpacing: 0.05,
       },
       handleScroll: true,
       handleScale: true,
@@ -250,9 +255,30 @@ export function CandleChart({ candles, indicators, symbol = '' }: Props) {
       }));
       series.setData(data);
     }
-    chart.timeScale().fitContent();
     setRenderTick((t) => t + 1);
   }, [chartType, displayCandles]);
+
+  // Apply the timeframe as a TradingView-style visible window. All candles stay
+  // loaded, so the user can always drag/zoom out to the full available history.
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart || displayCandles.length === 0) return;
+    const range = visibleRangeFor(displayCandles, timeframe);
+    if (range) {
+      // Map the time window to a logical (bar-index) range; logical ranges are
+      // honored reliably even when the window spans more bars than pixels.
+      let fromIdx = displayCandles.findIndex((c) => c.time >= range.from);
+      if (fromIdx < 0) fromIdx = 0;
+      const lastIdx = displayCandles.length - 1;
+      chart.timeScale().setVisibleLogicalRange({
+        from: (fromIdx - 0.5) as Logical,
+        to: (lastIdx + 6) as Logical,
+      });
+    } else {
+      chart.timeScale().fitContent();
+    }
+    setRenderTick((t) => t + 1);
+  }, [timeframe, displayCandles]);
 
   // Volume histogram pane (bottom overlay on the main chart).
   useEffect(() => {

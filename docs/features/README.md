@@ -5,15 +5,17 @@ Living docs for shipped features and notable fixes. One page per feature area.
 ## Features
 
 - [Feature Guard Hook](./feature-guard-hook.md) — Stop hook enforcing docs + tests for code changes
-- [Chart Timeframes](./chart-timeframes.md) — resample candles into bar intervals with a draggable time axis
+- [TradingView-Style Charts](./tradingview-charts.md) — chart types, volume, legend, RSI/MACD panes, drawing tools, PNG export
+- [Chart Timeframes](./chart-timeframes.md) — TradingView-style zoom/lookback windows over the full history
 - [Test Suite](./testing.md) — backend + frontend tests and how to run them
 - [Loading Live Data in the App](./live-data.md) — enable and use the in-app live fetch
 - [Market Data Fetching](./market-data.md) — pluggable Yahoo Finance backends behind one trait
 
 ## Changelog
 
+- 2026-06-21 — **Fixed** timeframe buttons are now zoom/lookback windows over the full history (1Y shows ~250 daily candles, draggable) instead of aggregating to 1–2 bars ([chart-timeframes](./chart-timeframes.md))
+- 2026-06-21 — **Added** TradingView-style charts — Candles/Bars/Line/Area/Heikin-Ashi, volume histogram, crosshair legend, RSI/MACD sub-panes, drawing tools, price-scale modes, PNG export ([tradingview-charts](./tradingview-charts.md))
 - 2026-06-21 — **Added** Feature Guard Stop hook — blocks turn end when source changed without matching `docs/features/` + tests ([feature-guard-hook](./feature-guard-hook.md))
-- 2026-06-21 — **Fixed** chart timeframe buttons now resample candles into bar intervals (1W/1M/3M/1Y) with a visible, draggable time axis ([chart-timeframes](./chart-timeframes.md))
 - 2026-06-21 — **Added** `feature-tests` skill — auto-adds/updates tests and refreshes [docs/TESTING.md](../TESTING.md) for every feature/fix ([testing](./testing.md))
 - 2026-06-21 — **Added** comprehensive test suite (Rust core/data/desktop + Vitest frontend) and [docs/TESTING.md](../TESTING.md) ([testing](./testing.md))
 - 2026-06-21 — **Added** Data mode toggle (Live / Local) with persistence ([live-data](./live-data.md))
