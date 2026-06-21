@@ -103,6 +103,17 @@ Write-Ok "Dependencies installed"
 Push-Location $DeskDir
 try {
   if ($Mode -eq 'dev') {
+    # Tauri's devUrl is fixed to http://localhost:5173 and Vite now uses
+    # strictPort, so a stale listener on 5173 would make the dev server fail to
+    # start (leaving the desktop window blank). Detect and report it early.
+    $busy = Get-NetTCPConnection -LocalPort 5173 -State Listen -ErrorAction SilentlyContinue
+    if ($busy) {
+      $procId = ($busy | Select-Object -First 1).OwningProcess
+      $name = (Get-Process -Id $procId -ErrorAction SilentlyContinue).ProcessName
+      Fail ("Port 5173 is already in use by PID $procId ($name). " +
+            "Close that process (e.g. a standalone 'pnpm dev') and re-run, " +
+            "since the desktop app loads the frontend from http://localhost:5173.")
+    }
     Write-Step "Launching desktop app (dev)"
     pnpm dev
   } else {

@@ -13,6 +13,8 @@ Living docs for shipped features and notable fixes. One page per feature area.
 
 ## Changelog
 
+- 2026-06-21 — **Fixed** browser live data ("Network error contacting the data proxy") — the proxy now fronts Yahoo Finance (free, **no API key**) and pins dev port 8787, so live fetch works with just `pnpm --dir proxy dev` ([live-data](./live-data.md))
+- 2026-06-21 — **Fixed** desktop app loaded stale/blank content — Vite now uses `strictPort` on 5173 (matching Tauri's `devUrl`) instead of silently moving to 5174, and `run-desktop.ps1` reports a busy port early ([live-data](./live-data.md))
 - 2026-06-21 — **Fixed** `1D` chart rendered an unreadable blob (all ~10 years crammed in via `fitContent` + tiny `minBarSpacing`); the chart now opens on a readable recent window (~160 bars) and scrolls back through history, fixing the "1D not working" and zoom-feels-broken bugs ([chart-timeframes](./chart-timeframes.md), [tradingview-charts](./tradingview-charts.md))
 - 2026-06-21 — **Changed** extended history depth — offline sample data now spans ~10 years and native backends default to full history, so `1Y` shows many candles ([chart-timeframes](./chart-timeframes.md), [market-data](./market-data.md))
 - 2026-06-21 — **Changed** timeframe buttons now set the candle interval (1D daily, 1W weekly, 1M/3M/1Y aggregated) and added zoom in/out + reset-view controls ([chart-timeframes](./chart-timeframes.md), [tradingview-charts](./tradingview-charts.md))

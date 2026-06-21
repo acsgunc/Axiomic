@@ -23,6 +23,18 @@ const crossOriginIsolation = {
 };
 
 export default defineConfig({
+  // The Tauri desktop shell connects to a fixed dev URL (http://localhost:5173).
+  // `strictPort` makes Vite fail loudly if 5173 is taken instead of silently
+  // moving to 5174 — which would leave the desktop window loading stale/blank
+  // content from whatever already occupies 5173.
+  server: {
+    port: 5173,
+    strictPort: true,
+  },
+  preview: {
+    port: 5173,
+    strictPort: true,
+  },
   plugins: [
     react(),
     crossOriginIsolation,

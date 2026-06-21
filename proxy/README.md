@@ -1,15 +1,16 @@
 # Axiomic Data Proxy
 
-A tiny [Cloudflare Worker](https://workers.cloudflare.com/) that fronts a
-market-data API. It exists for two reasons:
+A tiny [Cloudflare Worker](https://workers.cloudflare.com/) that fronts
+**Yahoo Finance's** public chart API. It exists because browsers cannot call the
+upstream directly (CORS); the Worker adds the appropriate
+`Access-Control-Allow-Origin` headers and normalizes the response.
 
-1. **CORS** — browsers cannot call most data APIs directly. The Worker adds the
-   appropriate `Access-Control-Allow-Origin` headers.
-2. **Key hiding** — your upstream API key stays server-side as a Worker secret
-   and is never shipped to the browser.
+The upstream is **free and needs no API key**, so the proxy works out of the box
+— just run it.
 
 > The proxy is **optional**. Axiomic works fully offline with CSV upload and
-> built-in sample data. Configure the proxy only if you want live data.
+> built-in sample data, and the desktop app fetches Yahoo natively (no proxy).
+> Use the proxy only for live data in the **browser**.
 
 ## Contract
 
@@ -27,8 +28,7 @@ Candle = {
 ```bash
 cd proxy
 pnpm install
-npx wrangler secret put DATA_API_KEY   # paste your upstream key
-pnpm dev                               # http://localhost:8787
+pnpm dev                               # http://localhost:8787 (no key needed)
 ```
 
 Test it:
@@ -51,7 +51,7 @@ VITE_PROXY_URL=https://axiomic-proxy.your-account.workers.dev
 
 ## Adapting the provider
 
-The sample targets Alpha Vantage's `TIME_SERIES_DAILY`. To use a different
-provider, edit `fetchUpstream()` in [`src/worker.ts`](src/worker.ts) so it
-returns the normalized `Candle[]` shape above. A Vercel Edge Function variant
+The default upstream is Yahoo Finance's `v8/finance/chart` endpoint. To use a
+different provider, edit `fetchUpstream()` in [`src/worker.ts`](src/worker.ts) so
+it returns the normalized `Candle[]` shape above. A Vercel Edge Function variant
 is straightforward — reuse the same normalization and return the same JSON.

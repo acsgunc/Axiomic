@@ -11,8 +11,9 @@ where the app runs:
 - **Desktop (Tauri):** fetches **natively** via the `axiomic-data` crate, with a
   **Source** dropdown to switch between `yfinance-rs` and `yahoo_finance_api`
   (both free, no API key). No proxy needed.
-- **Browser:** fetches via a serverless proxy (Cloudflare Worker), since the
-  Yahoo crates can't run in WASM.
+- **Browser:** fetches via a serverless proxy (Cloudflare Worker) that fronts
+  **Yahoo Finance** (free, **no API key**), since the Yahoo crates can't run in
+  WASM and browsers block the upstream directly (CORS).
 
 The live fetch button lives in the **Data** panel (bottom-left).
 
@@ -32,6 +33,15 @@ or a configured proxy in the browser); otherwise the app stays in Local mode.
 
 ## Status
 
+- **Fixed** — 2026-06-21 — Browser live fetch failed with "Network error
+  contacting the data proxy". The proxy now fronts **Yahoo Finance** (free, **no
+  API key**) instead of Alpha Vantage, so it works with just `pnpm --dir proxy
+  dev` — no secret to configure. The proxy dev port is pinned to `8787` to match
+  `web/.env`.
+- **Fixed** — 2026-06-21 — Desktop app loaded stale/blank content because Vite
+  silently moved to port 5174 when 5173 was busy while Tauri's `devUrl` stayed on
+  5173. Vite now uses `strictPort` on 5173 and `run-desktop.ps1` reports a busy
+  port early.
 - **Added** — 2026-06-21 — **Data mode** toggle (Live / Local) in the Data panel:
   choose whether selecting a symbol auto-fetches live data or uses local/cached
   data. Persisted across sessions.
@@ -59,30 +69,23 @@ or a configured proxy in the browser); otherwise the app stays in Local mode.
 
 Both providers use free Yahoo Finance endpoints; no key or proxy is involved.
 
-### Browser — local development (proxy)
+### Browser — local development (proxy, no API key)
 
-1. Get a free upstream key (the sample uses Alpha Vantage:
-   https://www.alphavantage.co/support/#api-key).
-2. Add it to the proxy's local secrets file (gitignored):
+1. Start the proxy and the web app (separate terminals):
    ```bash
-   cd proxy
-   cp .dev.vars.example .dev.vars   # then paste your key into .dev.vars
-   ```
-3. Start the proxy and the web app (separate terminals):
-   ```bash
-   pnpm --dir proxy dev   # http://localhost:8787
-   pnpm --dir web dev
+   pnpm --dir proxy dev   # http://localhost:8787 (Yahoo Finance, no key)
+   pnpm --dir web dev     # http://localhost:5173
    ```
    `web/.env` already points `VITE_PROXY_URL` at `http://localhost:8787`.
-4. In the app, pick a symbol in the **Watchlist**, then click **Fetch Live Data**
-   in the **Data** panel.
+2. In the app, switch **Data mode** to **Live** and pick a symbol in the
+   **Watchlist** (or click **Fetch Live Data**). Candles stream in from Yahoo via
+   the proxy.
 
 ### Production (deployed Worker)
 
-1. Deploy the proxy and set its upstream API key (see [proxy/README.md](../../proxy/README.md)):
+1. Deploy the proxy (no secret required — it uses Yahoo Finance):
    ```bash
    cd proxy
-   npx wrangler secret put DATA_API_KEY   # e.g. an Alpha Vantage key
    npx wrangler deploy
    ```
 2. Point the web app at the deployed worker in `web/.env`:
@@ -106,9 +109,11 @@ Close, Volume). The desktop app does not need any of this.
   `Provider::LegacyApi` in the `fetch_history` Tauri command, which calls the
   `axiomic-data` crate ([market-data](./market-data.md)). Yahoo's free endpoints
   can rate-limit or change without notice.
-- **Browser:** the example upstream is Alpha Vantage's `TIME_SERIES_DAILY`; adapt
-  `fetchUpstream` in [proxy/src/worker.ts](../../proxy/src/worker.ts) for another
-  provider.
+- **Browser:** the upstream is Yahoo Finance's public chart API
+  (`query1.finance.yahoo.com/v8/finance/chart/{symbol}`) — free and key-less. The
+  proxy normalizes it to `{ candles: Candle[] }`; adapt `fetchUpstream` in
+  [proxy/src/worker.ts](../../proxy/src/worker.ts) for another provider. Yahoo can
+  rate-limit or change without notice.
 - The frontend detects the desktop shell via the global Tauri API
   (`withGlobalTauri: true`); in the browser that global is absent, so it falls
   back to the proxy path automatically.
