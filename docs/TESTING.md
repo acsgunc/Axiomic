@@ -36,9 +36,11 @@ desktop/src-tauri/
 web/
   vitest.config.ts         # Vitest config (jsdom env)
   src/test/setup.ts        # global test setup (jest-dom + cleanup)
-  src/lib/__tests__/       # utils, sampleData, dataProvider tests
-  src/store/__tests__/     # useStore tests
+  src/lib/__tests__/       # utils, sampleData, dataProvider, gridLayout tests
+  src/lib/marketData/__tests__/ # hyperliquid + registry tests
+  src/store/__tests__/     # useStore + useDashboardStore tests
   src/components/__tests__/ # DataLoader component tests
+  src/components/dashboard/__tests__/ # TickerBar component tests
 ```
 
 There is **no root Cargo workspace** — `core`, `data`, and
@@ -74,7 +76,7 @@ pnpm --dir web test
 ```
 
 Expected totals (current): **core** 30+ tests, **data** 5 tests + 1 doctest,
-**desktop** 4 tests, **frontend** 68 tests.
+**desktop** 4 tests, **frontend** 111 tests.
 
 ---
 
@@ -265,6 +267,41 @@ modules are mocked with `vi.mock` in the store and component tests.
   enables the fetch button when a proxy exists.
 - Desktop branch — renders the source selector with both providers; changing the
   source updates the store provider.
+
+[web/src/components/dashboard/\_\_tests\_\_/TickerBar.test.tsx](../web/src/components/dashboard/__tests__/TickerBar.test.tsx)
+- Renders the symbol, source badge and adaptively-formatted price.
+- **Flashes green** on an up-tick then fades back to the neutral background.
+- Shows a loading state with no price.
+
+### Live dashboard — grid + market data
+
+[web/src/lib/\_\_tests\_\_/gridLayout.test.ts](../web/src/lib/__tests__/gridLayout.test.ts)
+- `gridShape` maps 1/2/4/6/8 to the canonical layout (1×1, 2×1, 2×2, 3×2, 4×2)
+  and covers every count with enough cells.
+- `responsiveColumns` stacks to 1 column on phones, caps at 2 on tablets, and
+  uses the ideal columns on desktops.
+- `isChartCount` accepts allowed counts and rejects everything else.
+
+[web/src/lib/marketData/\_\_tests\_\_/hyperliquid.test.ts](../web/src/lib/marketData/__tests__/hyperliquid.test.ts)
+- `parseHlCandle` normalises Hyperliquid's string OHLCV + ms timestamps.
+- The `HyperliquidStream` multiplexer (with a fake WebSocket) opens one socket
+  and sends a `candle` subscribe on connect, routes parsed candles to the
+  matching listener only, and ref-counts subscriptions so the last unsubscribe
+  closes the socket.
+- Source metadata (id/assetClass/intervals) is asserted.
+
+[web/src/lib/marketData/\_\_tests\_\_/registry.test.ts](../web/src/lib/marketData/__tests__/registry.test.ts)
+- Exposes the built-in `hyperliquid` + `yfinance` sources.
+- Defaults to live crypto; resolves unknown ids to the default source.
+- `registerSource` makes a custom broker selectable (pluggability).
+
+[web/src/store/\_\_tests\_\_/useDashboardStore.test.ts](../web/src/store/__tests__/useDashboardStore.test.ts)
+- Defaults to 4 charts and a full 8-pane line-up spanning crypto + US/SG/India.
+- Persists chart count + pane edits to `localStorage`; ignores invalid counts.
+- Uppercases custom symbols; resets symbol/interval when switching a pane's
+  source.
+- Restores a saved layout and falls back to defaults on corrupt storage;
+  sanitises unknown source/interval values.
 
 ---
 

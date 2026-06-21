@@ -32,17 +32,27 @@ export async function loadFromCsvFile(file: File): Promise<Candle[]> {
   }
 }
 
+/** Optional intraday/range controls forwarded to the proxy (Yahoo native strings). */
+export interface ProxyFetchOptions {
+  /** Yahoo bar interval, e.g. `1d`, `1wk`, `60m`, `15m`. Defaults to proxy daily. */
+  interval?: string;
+  /** Yahoo history range, e.g. `2y`, `1mo`, `5d`. Defaults to the proxy's range. */
+  range?: string;
+}
+
 /**
- * Fetches daily candles for a symbol via the configured proxy.
+ * Fetches candles for a symbol via the configured proxy.
  *
  * The proxy is expected to return JSON in the shape `{ candles: Candle[] }`
  * or a bare `Candle[]`. See proxy/README for the contract. `provider` selects
  * the upstream source (mirrors the desktop provider switch) and is forwarded to
- * the proxy as a query param.
+ * the proxy as a query param. `options` optionally requests an intraday interval
+ * and/or a specific history range (used by the live dashboard).
  */
 export async function loadFromProxy(
   symbol: string,
   provider: NativeProvider = 'yfinance',
+  options: ProxyFetchOptions = {},
 ): Promise<Candle[]> {
   if (!PROXY_URL) {
     throw new DataError(
@@ -50,9 +60,10 @@ export async function loadFromProxy(
     );
   }
   const base = PROXY_URL.replace(/\/$/, '');
-  const url =
-    `${base}/quotes?symbol=${encodeURIComponent(symbol)}` +
-    `&provider=${encodeURIComponent(provider)}`;
+  const params = new URLSearchParams({ symbol, provider });
+  if (options.interval) params.set('interval', options.interval);
+  if (options.range) params.set('range', options.range);
+  const url = `${base}/quotes?${params.toString()}`;
   let res: Response;
   try {
     res = await fetch(url);

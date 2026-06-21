@@ -1,39 +1,41 @@
-import { useEffect, useMemo, useState } from 'react';
-import { CandleChart } from './components/CandleChart';
-import { Watchlist } from './components/Watchlist';
-import { IndicatorPanel } from './components/IndicatorPanel';
-import { DataLoader } from './components/DataLoader';
-import { BacktestPanel } from './components/BacktestPanel';
-import { Panel, Button } from './components/ui';
-import { useStore, useActiveCandles } from './store/useStore';
+import { useEffect, useState } from 'react';
+import { AnalysisWorkspace } from './components/AnalysisWorkspace';
+import { LiveDashboard } from './components/dashboard/LiveDashboard';
+import { useStore } from './store/useStore';
 import { preloadEngine } from './engine';
 import { cn } from './lib/utils';
-import { TIMEFRAMES, resampleCandles, type TimeframeId } from './lib/timeframe';
+
+/** Top-level view: live multi-chart dashboard or single-symbol analysis. */
+type View = 'live' | 'analyse';
+
+const VIEW_KEY = 'axiomic.view';
+
+function initialView(): View {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'analyse' ? 'analyse' : 'live';
+  } catch {
+    return 'live';
+  }
+}
 
 export default function App() {
   const init = useStore((s) => s.init);
-  const activeSymbol = useStore((s) => s.activeSymbol);
-  const allCandles = useActiveCandles();
-  const indicators = useStore((s) => s.indicators);
-  const loading = useStore((s) => s.loading);
-  const error = useStore((s) => s.error);
-  const clearError = useStore((s) => s.clearError);
   const storageReady = useStore((s) => s.storageReady);
-  const [timeframe, setTimeframe] = useState<TimeframeId>('1D');
+  const [view, setView] = useState<View>(initialView);
 
   useEffect(() => {
     preloadEngine();
     void init();
   }, [init]);
 
-  // The timeframe selects the candle interval (1D daily, 1W weekly, …); the
-  // full history is aggregated into that bar size and shown end-to-end.
-  const candles = useMemo(
-    () => resampleCandles(allCandles, timeframe),
-    [allCandles, timeframe],
-  );
-
-  const last = candles[candles.length - 1];
+  const selectView = (next: View) => {
+    setView(next);
+    try {
+      localStorage.setItem(VIEW_KEY, next);
+    } catch {
+      // Ignore storage failures; the choice still applies in-session.
+    }
+  };
 
   return (
     <div className="flex h-screen flex-col bg-base-900 text-slate-200">
@@ -46,9 +48,28 @@ export default function App() {
               Axiomic
             </span>
           </div>
-          <span className="hidden text-xs text-slate-500 sm:inline">
-            Browser-first stock analysis · Rust + WASM
-          </span>
+          <nav className="flex rounded-md border border-base-700 p-0.5">
+            {(
+              [
+                ['live', 'Live Grid'],
+                ['analyse', 'Analyse'],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => selectView(id)}
+                aria-pressed={view === id}
+                className={cn(
+                  'rounded px-3 py-1 text-xs font-medium transition-colors',
+                  view === id
+                    ? 'bg-accent text-white'
+                    : 'text-slate-300 hover:bg-base-700',
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
         </div>
         <div className="flex items-center gap-2">
           <span
@@ -64,69 +85,7 @@ export default function App() {
         </div>
       </header>
 
-      {error && (
-        <div className="flex items-center justify-between border-b border-accent-down/40 bg-accent-down/10 px-4 py-2 text-sm text-accent-down">
-          <span>{error}</span>
-          <button onClick={clearError} aria-label="Dismiss error">
-            ×
-          </button>
-        </div>
-      )}
-
-      {/* Body */}
-      <div className="grid min-h-0 flex-1 grid-cols-[220px_1fr_300px] gap-2 p-2">
-        {/* Left: watchlist + data */}
-        <div className="flex min-h-0 flex-col gap-2">
-          <Panel title="Watchlist" className="min-h-0 flex-1">
-            <Watchlist />
-          </Panel>
-          <Panel title="Data" className="shrink-0">
-            <DataLoader />
-          </Panel>
-        </div>
-
-        {/* Center: chart */}
-        <Panel
-          title={`${activeSymbol}${last ? ` · ${last.close.toFixed(2)}` : ''}`}
-          className="min-h-0"
-          action={
-            <div className="flex items-center gap-1">
-              {TIMEFRAMES.map((tf) => (
-                <Button
-                  key={tf.id}
-                  variant={tf.id === timeframe ? 'accent' : 'ghost'}
-                  onClick={() => setTimeframe(tf.id)}
-                  className="px-2 py-1 text-xs"
-                >
-                  {tf.id}
-                </Button>
-              ))}
-            </div>
-          }
-        >
-          {loading && !candles.length ? (
-            <div className="flex h-full items-center justify-center text-slate-500">
-              Loading…
-            </div>
-          ) : candles.length ? (
-            <CandleChart candles={candles} indicators={indicators} symbol={activeSymbol} timeframe={timeframe} />
-          ) : (
-            <div className="flex h-full items-center justify-center text-slate-500">
-              No data. Upload a CSV or add a symbol.
-            </div>
-          )}
-        </Panel>
-
-        {/* Right: indicators + backtest */}
-        <div className="flex min-h-0 flex-col gap-2 overflow-auto">
-          <Panel title="Indicators" className="shrink-0">
-            <IndicatorPanel />
-          </Panel>
-          <Panel title="Backtest · SMA Crossover" className="shrink-0">
-            <BacktestPanel />
-          </Panel>
-        </div>
-      </div>
+      {view === 'live' ? <LiveDashboard /> : <AnalysisWorkspace />}
     </div>
   );
 }

@@ -4,6 +4,7 @@ Living docs for shipped features and notable fixes. One page per feature area.
 
 ## Features
 
+- [Live Multi-Chart Dashboard](./live-dashboard.md) — configurable 1–8 live chart grid, Hyperliquid crypto + yfinance equities, per-pane symbol/timeframe, flashing tickers, pluggable sources
 - [Feature Guard Hook](./feature-guard-hook.md) — Stop hook enforcing docs + tests for code changes
 - [TradingView-Style Charts](./tradingview-charts.md) — chart types, volume, legend, RSI/MACD panes, drawing tools, PNG export
 - [Chart Timeframes](./chart-timeframes.md) — timeframe buttons select the candle interval (1D/1W/1M/3M/1Y aggregation)
@@ -13,6 +14,7 @@ Living docs for shipped features and notable fixes. One page per feature area.
 
 ## Changelog
 
+- 2026-06-22 — **Added** live multi-chart dashboard — configurable 1/2/4/6/8 grid (persisted), Hyperliquid WebSocket crypto + yfinance equities (US/SG/India), independent per-pane symbol/timeframe, colour-coded flashing ticker bars, and a pluggable `MarketDataSource` registry; proxy now accepts `interval`/`range` and a broadened symbol regex for `*.SI`/`*.NS` tickers ([live-dashboard](./live-dashboard.md))
 - 2026-06-21 — **Added** browser **Source** provider selector (like the desktop) — the Data panel dropdown forwards a `provider` query param to the proxy, routed to Yahoo's query1/query2 edge hosts ([live-data](./live-data.md))
 - 2026-06-21 — **Fixed** browser live data ("Network error contacting the data proxy") — the proxy now fronts Yahoo Finance (free, **no API key**) and pins dev port 8787, so live fetch works with just `pnpm --dir proxy dev` ([live-data](./live-data.md))
 - 2026-06-21 — **Fixed** desktop app loaded stale/blank content — Vite now uses `strictPort` on 5173 (matching Tauri's `devUrl`) instead of silently moving to 5174, and `run-desktop.ps1` reports a busy port early ([live-data](./live-data.md))
