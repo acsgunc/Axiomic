@@ -229,12 +229,13 @@ modules are mocked with `vi.mock` in the store and component tests.
   true when `VITE_PROXY_URL` is set; `isDesktop` true when the Tauri global is
   present (validated by re-importing the module with stubbed env/globals).
 - `loadFromProxy` — `{ candles }` payload, bare-array payload, non-ok response,
-  empty result, network failure, and the no-proxy guard.
+  empty result, network failure, the no-proxy guard, and that the selected
+  `provider` is forwarded as a query param (defaulting to `yfinance`).
 - `loadFromNative` — invokes `fetch_history` with `{ ticker, provider }`,
   surfaces backend string errors as `DataError`, rejects empty results, throws
   when not under Tauri.
-- `fetchLive` routing — native on desktop, proxy in the browser, throws when no
-  live source is available.
+- `fetchLive` routing — native on desktop, proxy (with the `provider` param) in
+  the browser, throws when no live source is available.
 - `loadSample` — deterministic per symbol.
 
 ### Store (Zustand)

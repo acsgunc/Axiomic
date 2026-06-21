@@ -13,7 +13,8 @@ where the app runs:
   (both free, no API key). No proxy needed.
 - **Browser:** fetches via a serverless proxy (Cloudflare Worker) that fronts
   **Yahoo Finance** (free, **no API key**), since the Yahoo crates can't run in
-  WASM and browsers block the upstream directly (CORS).
+  WASM and browsers block the upstream directly (CORS). A **Source** dropdown (same
+  as desktop) selects which Yahoo edge host the proxy queries.
 
 The live fetch button lives in the **Data** panel (bottom-left).
 
@@ -33,6 +34,9 @@ or a configured proxy in the browser); otherwise the app stays in Local mode.
 
 ## Status
 
+- **Added** — 2026-06-21 — The **browser** now has a **Source** provider selector
+  too (like the desktop), forwarded to the proxy as a `provider` query param and
+  routed to Yahoo's query1 / query2 edge hosts.
 - **Fixed** — 2026-06-21 — Browser live fetch failed with "Network error
   contacting the data proxy". The proxy now fronts **Yahoo Finance** (free, **no
   API key**) instead of Alpha Vantage, so it works with just `pnpm --dir proxy
@@ -79,7 +83,8 @@ Both providers use free Yahoo Finance endpoints; no key or proxy is involved.
    `web/.env` already points `VITE_PROXY_URL` at `http://localhost:8787`.
 2. In the app, switch **Data mode** to **Live** and pick a symbol in the
    **Watchlist** (or click **Fetch Live Data**). Candles stream in from Yahoo via
-   the proxy.
+   the proxy. Use the **Source** dropdown to switch which Yahoo edge host the
+   proxy queries (**Yahoo Finance** / **Yahoo Finance (alt host)**).
 
 ### Production (deployed Worker)
 
@@ -110,10 +115,13 @@ Close, Volume). The desktop app does not need any of this.
   `axiomic-data` crate ([market-data](./market-data.md)). Yahoo's free endpoints
   can rate-limit or change without notice.
 - **Browser:** the upstream is Yahoo Finance's public chart API
-  (`query1.finance.yahoo.com/v8/finance/chart/{symbol}`) — free and key-less. The
-  proxy normalizes it to `{ candles: Candle[] }`; adapt `fetchUpstream` in
-  [proxy/src/worker.ts](../../proxy/src/worker.ts) for another provider. Yahoo can
-  rate-limit or change without notice.
+  (`query1.finance.yahoo.com` / `query2.finance.yahoo.com` `/v8/finance/chart/{symbol}`)
+  — free and key-less. The **Source** dropdown sends a `provider` query param
+  (`yfinance` → query1, `yahoo` → query2) that picks the edge host; both return the
+  same data, so it mainly serves as a fail-over. The proxy normalizes the response
+  to `{ candles: Candle[] }`; adapt `fetchUpstream` in
+  [proxy/src/worker.ts](../../proxy/src/worker.ts) to add a genuinely different
+  upstream. Yahoo can rate-limit or change without notice.
 - The frontend detects the desktop shell via the global Tauri API
   (`withGlobalTauri: true`); in the browser that global is absent, so it falls
   back to the proxy path automatically.
@@ -121,7 +129,7 @@ Close, Volume). The desktop app does not need any of this.
 ## Source
 
 - [desktop/src-tauri/src/lib.rs](../../desktop/src-tauri/src/lib.rs) — `fetch_history` command
-- [web/src/components/DataLoader.tsx](../../web/src/components/DataLoader.tsx) — Source selector + buttons
-- [web/src/lib/dataProvider.ts](../../web/src/lib/dataProvider.ts) — `isDesktop`, `loadFromNative`
-- [web/src/store/useStore.ts](../../web/src/store/useStore.ts) — `provider`, `loadNative`
-- [proxy/src/worker.ts](../../proxy/src/worker.ts) — browser proxy path
+- [web/src/components/DataLoader.tsx](../../web/src/components/DataLoader.tsx) — shared `ProviderSelect` (desktop + browser) + buttons
+- [web/src/lib/dataProvider.ts](../../web/src/lib/dataProvider.ts) — `isDesktop`, `loadFromNative`, `loadFromProxy(symbol, provider)`
+- [web/src/store/useStore.ts](../../web/src/store/useStore.ts) — `provider`, `loadProxy`, `loadNative`
+- [proxy/src/worker.ts](../../proxy/src/worker.ts) — browser proxy path; `provider` → Yahoo edge host

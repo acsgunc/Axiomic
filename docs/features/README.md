@@ -13,6 +13,7 @@ Living docs for shipped features and notable fixes. One page per feature area.
 
 ## Changelog
 
+- 2026-06-21 — **Added** browser **Source** provider selector (like the desktop) — the Data panel dropdown forwards a `provider` query param to the proxy, routed to Yahoo's query1/query2 edge hosts ([live-data](./live-data.md))
 - 2026-06-21 — **Fixed** browser live data ("Network error contacting the data proxy") — the proxy now fronts Yahoo Finance (free, **no API key**) and pins dev port 8787, so live fetch works with just `pnpm --dir proxy dev` ([live-data](./live-data.md))
 - 2026-06-21 — **Fixed** desktop app loaded stale/blank content — Vite now uses `strictPort` on 5173 (matching Tauri's `devUrl`) instead of silently moving to 5174, and `run-desktop.ps1` reports a busy port early ([live-data](./live-data.md))
 - 2026-06-21 — **Fixed** `1D` chart rendered an unreadable blob (all ~10 years crammed in via `fitContent` + tiny `minBarSpacing`); the chart now opens on a readable recent window (~160 bars) and scrolls back through history, fixing the "1D not working" and zoom-feels-broken bugs ([chart-timeframes](./chart-timeframes.md), [tradingview-charts](./tradingview-charts.md))

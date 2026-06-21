@@ -5,12 +5,14 @@
  *  - Bypass browser CORS restrictions when calling market-data APIs.
  *
  * Contract (consumed by web/src/lib/dataProvider.ts):
- *   GET /quotes?symbol=AAPL  ->  { "candles": Candle[] }
+ *   GET /quotes?symbol=AAPL[&provider=yfinance|yahoo]  ->  { "candles": Candle[] }
  *   Candle = { time: number(unix sec), open, high, low, close, volume }
  *
  * Upstream: Yahoo Finance's public chart API — free and requires NO API key,
- * matching the data source the desktop app uses natively. Just run the proxy
- * (`pnpm dev` -> wrangler dev on :8787) and the web app's live fetch works.
+ * matching the data source the desktop app uses natively. The optional
+ * `provider` param selects which Yahoo edge host to query (mirrors the desktop
+ * provider switch). Just run the proxy (`pnpm dev` -> wrangler dev on :8787) and
+ * the web app's live fetch works.
  */
 
 export interface Env {
@@ -47,8 +49,10 @@ export default {
       return json({ error: 'Invalid or missing symbol' }, 400, cors);
     }
 
+    const provider = parseProvider(url.searchParams.get('provider'));
+
     try {
-      const candles = await fetchUpstream(symbol.toUpperCase(), env);
+      const candles = await fetchUpstream(symbol.toUpperCase(), provider, env);
       return json({ candles }, 200, cors, /* cacheSeconds */ 3600);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Upstream error';
@@ -57,11 +61,33 @@ export default {
   },
 };
 
+/**
+ * Selectable upstream hosts. Both serve Yahoo Finance's free, key-less chart
+ * API; exposing two mirrors the desktop app's provider switch and lets callers
+ * fail over between Yahoo's edge hosts.
+ */
+type Provider = 'yfinance' | 'yahoo';
+
+const PROVIDER_HOSTS: Record<Provider, string> = {
+  yfinance: 'query1.finance.yahoo.com',
+  yahoo: 'query2.finance.yahoo.com',
+};
+
+/** Maps a request `provider` value to a known [`Provider`] (defaults to yfinance). */
+function parseProvider(value: string | null): Provider {
+  return value === 'yahoo' || value === 'legacy' ? 'yahoo' : 'yfinance';
+}
+
 /** Fetches and normalizes daily candles from Yahoo Finance (no API key). */
-async function fetchUpstream(symbol: string, env: Env): Promise<Candle[]> {
+async function fetchUpstream(
+  symbol: string,
+  provider: Provider,
+  env: Env,
+): Promise<Candle[]> {
+  const host = PROVIDER_HOSTS[provider];
   const range = env.HISTORY_RANGE || '10y';
   const endpoint =
-    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}` +
+    `https://${host}/v8/finance/chart/${encodeURIComponent(symbol)}` +
     `?range=${encodeURIComponent(range)}&interval=1d&includePrePost=false`;
 
   const res = await fetch(endpoint, {

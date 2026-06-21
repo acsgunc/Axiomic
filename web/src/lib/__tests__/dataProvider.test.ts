@@ -106,6 +106,34 @@ describe('loadFromProxy', () => {
     await expect(loadFromProxy('AAPL')).resolves.toEqual(sampleCandles);
   });
 
+  it('forwards the selected provider as a query param', async () => {
+    vi.stubEnv('VITE_PROXY_URL', 'http://proxy.test');
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ candles: sampleCandles }) });
+    vi.stubGlobal('fetch', fetchMock);
+    const { loadFromProxy } = await freshModule();
+
+    await loadFromProxy('AAPL', 'yahoo');
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://proxy.test/quotes?symbol=AAPL&provider=yahoo',
+    );
+  });
+
+  it('defaults to the yfinance provider when none is given', async () => {
+    vi.stubEnv('VITE_PROXY_URL', 'http://proxy.test');
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ candles: sampleCandles }) });
+    vi.stubGlobal('fetch', fetchMock);
+    const { loadFromProxy } = await freshModule();
+
+    await loadFromProxy('AAPL');
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://proxy.test/quotes?symbol=AAPL&provider=yfinance',
+    );
+  });
+
   it('accepts a bare array payload', async () => {
     vi.stubEnv('VITE_PROXY_URL', 'http://proxy.test');
     vi.stubGlobal(
@@ -199,8 +227,10 @@ describe('fetchLive routing', () => {
       .mockResolvedValue({ ok: true, json: async () => ({ candles: sampleCandles }) });
     vi.stubGlobal('fetch', fetchMock);
     const { fetchLive } = await freshModule();
-    await expect(fetchLive('AAPL', 'yfinance')).resolves.toEqual(sampleCandles);
-    expect(fetchMock).toHaveBeenCalledOnce();
+    await expect(fetchLive('AAPL', 'yahoo')).resolves.toEqual(sampleCandles);
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://proxy.test/quotes?symbol=AAPL&provider=yahoo',
+    );
   });
 
   it('throws when no live source is available', async () => {

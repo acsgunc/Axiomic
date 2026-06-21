@@ -91,18 +91,11 @@ export function DataLoader() {
 
       {isDesktop ? (
         <div className="flex flex-col gap-1.5">
-          <label className="flex items-center gap-2 text-[11px] text-slate-400">
-            Source
-            <select
-              value={provider}
-              onChange={(e) => setProvider(e.target.value as NativeProvider)}
-              disabled={loading}
-              className="flex-1 rounded-md border border-base-700 bg-base-800 px-2 py-1 text-xs text-slate-200 focus:border-accent focus:outline-none disabled:opacity-50"
-            >
-              <option value="yfinance">yfinance-rs (Yahoo)</option>
-              <option value="yahoo">yahoo_finance_api (legacy)</option>
-            </select>
-          </label>
+          <ProviderSelect
+            provider={provider}
+            onChange={setProvider}
+            disabled={loading}
+          />
           <Button
             onClick={() => void loadNative(activeSymbol)}
             disabled={loading}
@@ -113,12 +106,19 @@ export function DataLoader() {
         </div>
       ) : (
         <>
+          {hasProxy && (
+            <ProviderSelect
+              provider={provider}
+              onChange={setProvider}
+              disabled={loading}
+            />
+          )}
           <Button
             onClick={() => void loadProxy(activeSymbol)}
             disabled={loading || !hasProxy}
             title={
               hasProxy
-                ? `Fetch live daily candles for ${activeSymbol}`
+                ? `Fetch live daily candles for ${activeSymbol} via ${provider}`
                 : 'Live fetch is disabled — configure a data proxy to enable it'
             }
           >
@@ -148,5 +148,44 @@ export function DataLoader() {
         CSV columns: Date, Open, High, Low, Close, Volume. Parsed in Rust/WASM.
       </p>
     </div>
+  );
+}
+
+/** Option labels per runtime: native crates on desktop, proxy hosts in browser. */
+const PROVIDER_OPTIONS: Record<'desktop' | 'web', Record<NativeProvider, string>> = {
+  desktop: {
+    yfinance: 'yfinance-rs (Yahoo)',
+    yahoo: 'yahoo_finance_api (legacy)',
+  },
+  web: {
+    yfinance: 'Yahoo Finance',
+    yahoo: 'Yahoo Finance (alt host)',
+  },
+};
+
+/** Data-source picker shared by the desktop (native) and browser (proxy) paths. */
+function ProviderSelect({
+  provider,
+  onChange,
+  disabled,
+}: {
+  provider: NativeProvider;
+  onChange: (p: NativeProvider) => void;
+  disabled: boolean;
+}) {
+  const labels = isDesktop ? PROVIDER_OPTIONS.desktop : PROVIDER_OPTIONS.web;
+  return (
+    <label className="flex items-center gap-2 text-[11px] text-slate-400">
+      Source
+      <select
+        value={provider}
+        onChange={(e) => onChange(e.target.value as NativeProvider)}
+        disabled={disabled}
+        className="flex-1 rounded-md border border-base-700 bg-base-800 px-2 py-1 text-xs text-slate-200 focus:border-accent focus:outline-none disabled:opacity-50"
+      >
+        <option value="yfinance">{labels.yfinance}</option>
+        <option value="yahoo">{labels.yahoo}</option>
+      </select>
+    </label>
   );
 }

@@ -194,7 +194,7 @@ export const useStore = create<AppState>((set, get) => ({
     const s = symbol.trim().toUpperCase();
     set({ loading: true, error: null });
     try {
-      const candles = await loadFromProxy(s);
+      const candles = await loadFromProxy(s, get().provider);
       get().addSymbol(s);
       set((state) => ({
         candlesBySymbol: { ...state.candlesBySymbol, [s]: candles },

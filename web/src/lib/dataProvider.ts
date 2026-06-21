@@ -36,15 +36,23 @@ export async function loadFromCsvFile(file: File): Promise<Candle[]> {
  * Fetches daily candles for a symbol via the configured proxy.
  *
  * The proxy is expected to return JSON in the shape `{ candles: Candle[] }`
- * or a bare `Candle[]`. See proxy/README for the contract.
+ * or a bare `Candle[]`. See proxy/README for the contract. `provider` selects
+ * the upstream source (mirrors the desktop provider switch) and is forwarded to
+ * the proxy as a query param.
  */
-export async function loadFromProxy(symbol: string): Promise<Candle[]> {
+export async function loadFromProxy(
+  symbol: string,
+  provider: NativeProvider = 'yfinance',
+): Promise<Candle[]> {
   if (!PROXY_URL) {
     throw new DataError(
       'No data proxy configured. Set VITE_PROXY_URL or upload a CSV.',
     );
   }
-  const url = `${PROXY_URL.replace(/\/$/, '')}/quotes?symbol=${encodeURIComponent(symbol)}`;
+  const base = PROXY_URL.replace(/\/$/, '');
+  const url =
+    `${base}/quotes?symbol=${encodeURIComponent(symbol)}` +
+    `&provider=${encodeURIComponent(provider)}`;
   let res: Response;
   try {
     res = await fetch(url);
@@ -140,7 +148,7 @@ export async function fetchLive(
   provider: NativeProvider,
 ): Promise<Candle[]> {
   if (isDesktop) return loadFromNative(symbol, provider);
-  if (hasProxy) return loadFromProxy(symbol);
+  if (hasProxy) return loadFromProxy(symbol, provider);
   throw new DataError(
     'No live data source available. Run the desktop app or configure a proxy.',
   );
