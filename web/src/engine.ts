@@ -88,6 +88,12 @@ export const engine = {
     return mod.atr(candles, period) as Series;
   },
 
+  /** Heikin-Ashi transformed candles (same shape as the input). */
+  async heikinAshi(candles: Candle[]): Promise<Candle[]> {
+    const mod = await getModule();
+    return mod.heikin_ashi(candles) as Candle[];
+  },
+
   async backtestSmaCrossover(
     candles: Candle[],
     config: BacktestConfig,

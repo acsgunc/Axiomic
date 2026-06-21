@@ -185,6 +185,43 @@ pub fn atr(candles: &[Candle], period: usize) -> Series {
     Series::new(t, out)
 }
 
+/// Heikin-Ashi transformed candles, aligned 1:1 with the input candles.
+///
+/// Heikin-Ashi ("average bar") smooths price action to make trends easier to
+/// read:
+/// - `close = (open + high + low + close) / 4`
+/// - `open  = (prev_ha_open + prev_ha_close) / 2` (first bar seeds from raw O/C)
+/// - `high  = max(high, ha_open, ha_close)`
+/// - `low   = min(low,  ha_open, ha_close)`
+///
+/// `time` and `volume` are carried over unchanged.
+pub fn heikin_ashi(candles: &[Candle]) -> Vec<Candle> {
+    let mut out: Vec<Candle> = Vec::with_capacity(candles.len());
+    let mut prev_open = 0.0;
+    let mut prev_close = 0.0;
+    for (i, c) in candles.iter().enumerate() {
+        let ha_close = (c.open + c.high + c.low + c.close) / 4.0;
+        let ha_open = if i == 0 {
+            (c.open + c.close) / 2.0
+        } else {
+            (prev_open + prev_close) / 2.0
+        };
+        let ha_high = c.high.max(ha_open).max(ha_close);
+        let ha_low = c.low.min(ha_open).min(ha_close);
+        out.push(Candle {
+            time: c.time,
+            open: ha_open,
+            high: ha_high,
+            low: ha_low,
+            close: ha_close,
+            volume: c.volume,
+        });
+        prev_open = ha_open;
+        prev_close = ha_close;
+    }
+    out
+}
+
 /// Internal dense EMA holder that can be projected onto a time axis.
 struct EmaValues(Vec<Option<f64>>);
 
@@ -248,5 +285,25 @@ mod tests {
         for v in s.values.iter().flatten() {
             assert!(*v >= 0.0 && *v <= 100.0);
         }
+    }
+
+    #[test]
+    fn heikin_ashi_basic() {
+        let c = mk(&[10.0, 12.0, 11.0, 13.0]);
+        let ha = heikin_ashi(&c);
+        assert_eq!(ha.len(), c.len());
+        // First HA close = (O+H+L+C)/4 with mk(): O=C=10, H=11, L=9 → 40/4 = 10.
+        assert!((ha[0].close - 10.0).abs() < 1e-9);
+        // First HA open seeds from raw (O+C)/2 = 10.
+        assert!((ha[0].open - 10.0).abs() < 1e-9);
+        // HA high/low must bound the HA open/close.
+        for h in &ha {
+            assert!(h.high >= h.open && h.high >= h.close);
+            assert!(h.low <= h.open && h.low <= h.close);
+            assert_eq!(h.volume, 100.0);
+        }
+        // Subsequent HA open is the average of the previous HA open & close.
+        let expected_open1 = (ha[0].open + ha[0].close) / 2.0;
+        assert!((ha[1].open - expected_open1).abs() < 1e-9);
     }
 }

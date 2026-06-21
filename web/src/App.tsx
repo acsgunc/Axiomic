@@ -107,7 +107,7 @@ export default function App() {
               Loading…
             </div>
           ) : candles.length ? (
-            <CandleChart candles={candles} indicators={indicators} />
+            <CandleChart candles={candles} indicators={indicators} symbol={activeSymbol} />
           ) : (
             <div className="flex h-full items-center justify-center text-slate-500">
               No data. Upload a CSV or add a symbol.

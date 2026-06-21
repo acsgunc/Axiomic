@@ -91,6 +91,13 @@ mod wasm_api {
         to_js(&indicators::atr(&c, period))
     }
 
+    /// Transforms raw OHLCV candles into Heikin-Ashi candles (same JSON shape).
+    #[wasm_bindgen]
+    pub fn heikin_ashi(candles: JsValue) -> Result<JsValue, JsValue> {
+        let c = parse_candles(candles)?;
+        to_js(&indicators::heikin_ashi(&c))
+    }
+
     /// Runs an SMA-crossover backtest. `config` is the JSON form of
     /// [`BacktestConfig`].
     #[wasm_bindgen]
