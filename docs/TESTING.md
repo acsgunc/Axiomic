@@ -193,9 +193,10 @@ modules are mocked with `vi.mock` in the store and component tests.
 - `fmtDate` — UNIX seconds → ISO `yyyy-mm-dd`.
 
 [web/src/lib/\_\_tests\_\_/sampleData.test.ts](../web/src/lib/__tests__/sampleData.test.ts)
-- `generateSampleCandles` — requested length, deterministic per symbol,
-  different per symbol, daily-spaced ascending timestamps, internally
-  consistent OHLC (`high >= low`, `high >= open/close`, positive volume).
+- `generateSampleCandles` — requested length, **~10-year default span**,
+  deterministic per symbol, different per symbol, daily-spaced ascending
+  timestamps, internally consistent OHLC (`high >= low`, `high >= open/close`,
+  positive volume).
 - `candlesToCsv` — header + one row per candle, ISO date column formatting.
 
 ### Chart timeframes

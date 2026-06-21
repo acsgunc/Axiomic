@@ -6,6 +6,14 @@ describe('generateSampleCandles', () => {
     expect(generateSampleCandles('AAPL', 100).length).toBe(100);
   });
 
+  it('defaults to roughly a decade of daily history', () => {
+    const c = generateSampleCandles('AAPL');
+    // ~10 years of daily bars so coarse timeframes still show many candles.
+    expect(c.length).toBeGreaterThanOrEqual(3000);
+    const spanYears = (c[c.length - 1].time - c[0].time) / (365 * 86_400);
+    expect(spanYears).toBeGreaterThanOrEqual(8);
+  });
+
   it('is deterministic for a given symbol', () => {
     const a = generateSampleCandles('AAPL', 50);
     const b = generateSampleCandles('AAPL', 50);

@@ -13,6 +13,7 @@ Living docs for shipped features and notable fixes. One page per feature area.
 
 ## Changelog
 
+- 2026-06-21 — **Changed** extended history depth — offline sample data now spans ~10 years and native backends default to full history, so `1Y` shows many candles ([chart-timeframes](./chart-timeframes.md), [market-data](./market-data.md))
 - 2026-06-21 — **Changed** timeframe buttons now set the candle interval (1D daily, 1W weekly, 1M/3M/1Y aggregated) and added zoom in/out + reset-view controls ([chart-timeframes](./chart-timeframes.md), [tradingview-charts](./tradingview-charts.md))
 - 2026-06-21 — **Fixed** timeframe buttons are now zoom/lookback windows over the full history (1Y shows ~250 daily candles, draggable) instead of aggregating to 1–2 bars ([chart-timeframes](./chart-timeframes.md))
 - 2026-06-21 — **Added** TradingView-style charts — Candles/Bars/Line/Area/Heikin-Ashi, volume histogram, crosshair legend, RSI/MACD sub-panes, drawing tools, price-scale modes, PNG export ([tradingview-charts](./tradingview-charts.md))

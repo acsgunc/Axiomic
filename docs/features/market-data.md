@@ -56,8 +56,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 ## Notes / caveats
 
 - Requires Rust ≥ 1.91 (`yfinance-rs` 0.9 MSRV); verified compiling on 1.96.
-- Default window is 6 months of daily bars; override per backend with
-  `YFinanceClient::with_window(Range, Interval)` or
+- Default window is the **full available daily history** (`Range::Max` /
+  Yahoo `"max"`), so coarse chart timeframes (1Y/3M) show many candles; override
+  per backend with `YFinanceClient::with_window(Range, Interval)` or
   `YahooApiWrapper::with_window(interval, range)`.
 - Both backends hit the network — runtime fetches can fail if offline or
   rate-limited.

@@ -73,11 +73,11 @@ pub struct YFinanceClient {
 }
 
 impl YFinanceClient {
-    /// Creates a client with sensible defaults (6 months of daily bars).
+    /// Creates a client with sensible defaults (full available daily history).
     pub fn new() -> Result<Self, BoxError> {
         Ok(Self {
             client: yfinance_rs::YfClient::default(),
-            range: yfinance_rs::Range::M6,
+            range: yfinance_rs::Range::Max,
             interval: yfinance_rs::Interval::D1,
         })
     }
@@ -149,12 +149,12 @@ pub struct YahooApiWrapper {
 }
 
 impl YahooApiWrapper {
-    /// Creates a wrapper with sensible defaults (6 months of daily bars).
+    /// Creates a wrapper with sensible defaults (full available daily history).
     pub fn new() -> Result<Self, BoxError> {
         Ok(Self {
             connector: yahoo_finance_api::YahooConnector::new()?,
             interval: "1d".to_string(),
-            range: "6mo".to_string(),
+            range: "max".to_string(),
         })
     }
 

@@ -3,10 +3,13 @@ import type { Candle } from '../types';
 /**
  * Deterministic synthetic OHLCV generator used for demos and offline use.
  * Produces a plausible random-walk price series with drift and volatility.
+ *
+ * Defaults to ~10 years of daily bars so coarse timeframes (`1Y`, `3M`) still
+ * show many candles when aggregated.
  */
 export function generateSampleCandles(
   symbol: string,
-  days = 500,
+  days = 3650,
   startPrice = 100,
 ): Candle[] {
   // Seed the PRNG from the symbol so each ticker is stable across reloads.

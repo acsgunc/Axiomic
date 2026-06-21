@@ -46,10 +46,10 @@ const weekly = resampleCandles(candles, '1W');
 
 ## Notes / caveats
 
-- Because the timeframe is the **candle size**, coarse intervals on a short
-  history show few bars by design — e.g. ~1.4 years of data yields only 1–2
-  candles at `1Y` and ~5 at `3M`. Use `1D`/`1W`/`1M` for dense views, or the
-  zoom controls to inspect any range.
+- Because the timeframe is the **candle size**, the number of bars shown depends
+  on how much history is loaded. The offline sample data spans ~10 years and the
+  live backends fetch the full available history, so `1Y` shows ~10 yearly
+  candles, `3M` ~40, and `1M` ~120.
 - Intra-day intervals are not supported because the source data is daily; `1D`
   is the finest interval and the default.
 - Aggregation assumes source candles are sorted ascending by time (they are, as
