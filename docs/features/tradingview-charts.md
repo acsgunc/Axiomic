@@ -27,7 +27,8 @@ Open the web app, select a symbol, and use the toolbar above the chart:
   the cursor), `— H-Line` (click once to drop a horizontal line). Click any
   drawing to remove it, or `Clear` to remove all.
 - **Vol** toggles the up/down-colored volume histogram.
-- **✛** toggles the crosshair; **Fit** fits all data to view.
+- **✛** toggles the crosshair; **＋ / －** zoom in/out; **⟲ Reset** fits all data
+  to view (TradingView-style reset).
 - **⤓ PNG** downloads the chart (main + RSI + MACD panes stacked) as a PNG.
 
 The legend in the top-left follows the crosshair, showing O/H/L/C, the bar's

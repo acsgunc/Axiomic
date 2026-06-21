@@ -20,6 +20,8 @@ interface Props {
   onDrawTool: (t: DrawTool) => void;
   hasDrawings: boolean;
   onClearDrawings: () => void;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
   onFit: () => void;
   onScreenshot: () => void;
 }
@@ -113,8 +115,14 @@ export function ChartToolbar(props: Props) {
       >
         ✛
       </ToolButton>
-      <ToolButton active={false} title="Fit data to view" onClick={props.onFit}>
-        Fit
+      <ToolButton active={false} title="Zoom in" onClick={props.onZoomIn}>
+        ＋
+      </ToolButton>
+      <ToolButton active={false} title="Zoom out" onClick={props.onZoomOut}>
+        －
+      </ToolButton>
+      <ToolButton active={false} title="Reset chart view (fit all data)" onClick={props.onFit}>
+        ⟲ Reset
       </ToolButton>
       <ToolButton
         active={false}

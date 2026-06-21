@@ -28,7 +28,7 @@ import {
   type DrawTool,
   type ScaleMode,
 } from '../lib/chart';
-import { visibleRangeFor, type TimeframeId } from '../lib/timeframe';
+import { type TimeframeId } from '../lib/timeframe';
 
 interface Props {
   candles: Candle[];
@@ -258,25 +258,12 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
     setRenderTick((t) => t + 1);
   }, [chartType, displayCandles]);
 
-  // Apply the timeframe as a TradingView-style visible window. All candles stay
-  // loaded, so the user can always drag/zoom out to the full available history.
+  // Fit the full (aggregated) history to view whenever the data or the selected
+  // timeframe interval changes, so every bar is visible end-to-end by default.
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart || displayCandles.length === 0) return;
-    const range = visibleRangeFor(displayCandles, timeframe);
-    if (range) {
-      // Map the time window to a logical (bar-index) range; logical ranges are
-      // honored reliably even when the window spans more bars than pixels.
-      let fromIdx = displayCandles.findIndex((c) => c.time >= range.from);
-      if (fromIdx < 0) fromIdx = 0;
-      const lastIdx = displayCandles.length - 1;
-      chart.timeScale().setVisibleLogicalRange({
-        from: (fromIdx - 0.5) as Logical,
-        to: (lastIdx + 6) as Logical,
-      });
-    } else {
-      chart.timeScale().fitContent();
-    }
+    chart.timeScale().fitContent();
     setRenderTick((t) => t + 1);
   }, [timeframe, displayCandles]);
 
@@ -591,6 +578,31 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
 
   // --- Toolbar actions -----------------------------------------------------
 
+  /**
+   * Zooms the visible time range around its center. `factor < 1` zooms in
+   * (fewer bars), `factor > 1` zooms out (more bars). Mirrors TradingView's
+   * +/- zoom buttons.
+   */
+  function zoom(factor: number) {
+    const ts = chartRef.current?.timeScale();
+    if (!ts) return;
+    const range = ts.getVisibleLogicalRange();
+    if (!range) return;
+    const center = (range.from + range.to) / 2;
+    const half = ((range.to - range.from) / 2) * factor;
+    const minHalf = 1.5; // keep at least ~3 bars visible when fully zoomed in
+    const h = Math.max(half, minHalf);
+    ts.setVisibleLogicalRange({
+      from: (center - h) as Logical,
+      to: (center + h) as Logical,
+    });
+  }
+  function handleZoomIn() {
+    zoom(0.6);
+  }
+  function handleZoomOut() {
+    zoom(1 / 0.6);
+  }
   function handleFit() {
     chartRef.current?.timeScale().fitContent();
   }
@@ -623,6 +635,8 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
         }}
         hasDrawings={drawings.length > 0}
         onClearDrawings={() => setDrawings([])}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
         onFit={handleFit}
         onScreenshot={handleScreenshot}
       />

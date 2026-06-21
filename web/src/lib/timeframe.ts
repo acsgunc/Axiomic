@@ -12,56 +12,73 @@ export const TIMEFRAMES = [
 export type TimeframeId = (typeof TIMEFRAMES)[number]['id'];
 
 const DAY = 86_400;
-
-/** Always keep at least this many bars visible so tiny windows aren't a single candle. */
-const MIN_VISIBLE_BARS = 2;
+const WEEK = 7 * DAY;
 
 /**
- * Trailing lookback window, in days, for each timeframe. `null` means the
- * entire available history (the `ALL` preset).
+ * Returns the bucket key (UNIX seconds) a candle's timestamp falls into for the
+ * given timeframe — i.e. the candle *interval*:
+ *
+ * - `1D` / `ALL` — one bucket per source candle (no aggregation; daily data).
+ * - `1W` — fixed 7-day buckets aligned to the UNIX epoch.
+ * - `1M` / `3M` / `1Y` — calendar month / quarter / year (UTC).
  */
-export const TIMEFRAME_DAYS: Record<TimeframeId, number | null> = {
-  '1D': 1,
-  '1W': 7,
-  '1M': 30,
-  '3M': 90,
-  '1Y': 365,
-  ALL: null,
-};
-
-/** A visible time window in UNIX seconds, inclusive of both endpoints. */
-export interface TimeRange {
-  from: number;
-  to: number;
+export function bucketKey(time: number, id: TimeframeId): number {
+  switch (id) {
+    case '1D':
+    case 'ALL':
+      return time;
+    case '1W':
+      return Math.floor(time / WEEK) * WEEK;
+    case '1M': {
+      const d = new Date(time * 1000);
+      return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1) / 1000;
+    }
+    case '3M': {
+      const d = new Date(time * 1000);
+      const q = Math.floor(d.getUTCMonth() / 3) * 3;
+      return Date.UTC(d.getUTCFullYear(), q, 1) / 1000;
+    }
+    case '1Y': {
+      const d = new Date(time * 1000);
+      return Date.UTC(d.getUTCFullYear(), 0, 1) / 1000;
+    }
+  }
 }
 
 /**
- * Computes the visible time window (UNIX seconds) for a timeframe over the full
- * candle history, TradingView-style: the timeframe is a zoom/lookback preset,
- * not an aggregation. Returns `null` for `ALL` or empty input, signalling the
- * caller to fit the entire history.
+ * Aggregates daily candles into the selected timeframe's interval, so each
+ * output candle represents one `1D` / `1W` / `1M` / `3M` / `1Y` bar
+ * (TradingView-style interval selection).
  *
- * All candles stay loaded regardless of the selected window, so the user can
- * always pan/zoom out to reveal the complete history beyond this range.
- * Assumes candles are sorted ascending by time.
+ * Each aggregated bar uses first-open, last-close, max-high, min-low and summed
+ * volume. `1D` and `ALL` return the source unchanged. The source array is not
+ * mutated. Assumes candles are sorted ascending by time.
  */
-export function visibleRangeFor(
-  candles: Candle[],
-  id: TimeframeId,
-): TimeRange | null {
-  if (candles.length === 0) return null;
-  const days = TIMEFRAME_DAYS[id];
-  if (days == null) return null; // ALL → fit everything.
+export function resampleCandles(candles: Candle[], id: TimeframeId): Candle[] {
+  if (id === '1D' || id === 'ALL' || candles.length === 0) return candles;
 
-  const first = candles[0].time;
-  const to = candles[candles.length - 1].time;
-  let from = to - days * DAY;
-
-  // Guarantee a few visible bars even for tiny windows on sparse (daily) data.
-  const minIdx = Math.max(0, candles.length - MIN_VISIBLE_BARS);
-  from = Math.min(from, candles[minIdx].time);
-  if (from < first) from = first;
-
-  return { from, to };
+  const buckets = new Map<number, Candle>();
+  const order: number[] = [];
+  for (const c of candles) {
+    const key = bucketKey(c.time, id);
+    const bar = buckets.get(key);
+    if (!bar) {
+      buckets.set(key, {
+        time: key,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+        volume: c.volume,
+      });
+      order.push(key);
+    } else {
+      bar.high = Math.max(bar.high, c.high);
+      bar.low = Math.min(bar.low, c.low);
+      bar.close = c.close;
+      bar.volume += c.volume;
+    }
+  }
+  return order.map((k) => buckets.get(k)!);
 }
 

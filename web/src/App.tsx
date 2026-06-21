@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CandleChart } from './components/CandleChart';
 import { Watchlist } from './components/Watchlist';
 import { IndicatorPanel } from './components/IndicatorPanel';
@@ -8,7 +8,7 @@ import { Panel, Button } from './components/ui';
 import { useStore, useActiveCandles } from './store/useStore';
 import { preloadEngine } from './engine';
 import { cn } from './lib/utils';
-import { TIMEFRAMES, type TimeframeId } from './lib/timeframe';
+import { TIMEFRAMES, resampleCandles, type TimeframeId } from './lib/timeframe';
 
 export default function App() {
   const init = useStore((s) => s.init);
@@ -19,14 +19,19 @@ export default function App() {
   const error = useStore((s) => s.error);
   const clearError = useStore((s) => s.clearError);
   const storageReady = useStore((s) => s.storageReady);
-  const [timeframe, setTimeframe] = useState<TimeframeId>('1Y');
+  const [timeframe, setTimeframe] = useState<TimeframeId>('1D');
 
   useEffect(() => {
     preloadEngine();
     void init();
   }, [init]);
 
-  const candles = allCandles;
+  // The timeframe selects the candle interval (1D daily, 1W weekly, …); the
+  // full history is aggregated into that bar size and shown end-to-end.
+  const candles = useMemo(
+    () => resampleCandles(allCandles, timeframe),
+    [allCandles, timeframe],
+  );
 
   const last = candles[candles.length - 1];
 

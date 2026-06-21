@@ -201,13 +201,11 @@ modules are mocked with `vi.mock` in the store and component tests.
 ### Chart timeframes
 
 [web/src/lib/\_\_tests\_\_/timeframe.test.ts](../web/src/lib/__tests__/timeframe.test.ts)
-- `TIMEFRAME_DAYS` — every timeframe id maps to a lookback (`null` only for
-  `ALL`); spot-checks `1Y`=365 and `1D`=1.
-- `visibleRangeFor` — `null` for `ALL` and empty input; the `1Y` window ends at
-  the last bar and starts ~365 days back while keeping older data draggable;
-  clamps the start to the first candle when the lookback exceeds the history;
-  guarantees ≥ 2 visible bars for tiny windows; and produces progressively
-  wider windows for longer timeframes.
+- `bucketKey` — `1D`/`ALL` keep one bucket per candle; `1W` groups fixed 7-day
+  windows; `1M`/`3M`/`1Y` group by calendar month/quarter/year.
+- `resampleCandles` — returns the source unchanged for `1D`/`ALL`, handles empty
+  input, collapses dailies into fewer weekly bars, aggregates with first-open /
+  last-close / extreme high-low / summed volume, and does not mutate the source.
 
 ### Chart helpers
 

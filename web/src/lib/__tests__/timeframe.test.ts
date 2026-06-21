@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { TIMEFRAME_DAYS, TIMEFRAMES, visibleRangeFor } from '../timeframe';
+import { bucketKey, resampleCandles } from '../timeframe';
 import type { Candle } from '../../types';
 
 const DAY = 86_400;
@@ -21,59 +21,70 @@ function dailyCandles(n: number, start = Date.UTC(2024, 0, 1) / 1000): Candle[] 
   return out;
 }
 
-describe('TIMEFRAME_DAYS', () => {
-  it('maps every timeframe id to a lookback (null only for ALL)', () => {
-    for (const { id } of TIMEFRAMES) {
-      expect(id in TIMEFRAME_DAYS).toBe(true);
-    }
-    expect(TIMEFRAME_DAYS.ALL).toBeNull();
-    expect(TIMEFRAME_DAYS['1Y']).toBe(365);
-    expect(TIMEFRAME_DAYS['1D']).toBe(1);
+describe('bucketKey', () => {
+  it('returns the raw time for 1D and ALL (one bucket per candle)', () => {
+    expect(bucketKey(1_700_000_000, '1D')).toBe(1_700_000_000);
+    expect(bucketKey(1_700_000_000, 'ALL')).toBe(1_700_000_000);
+  });
+
+  it('groups consecutive days into fixed 7-day weekly buckets', () => {
+    const t0 = Math.floor(Date.UTC(2024, 0, 1) / 1000 / 604_800) * 604_800;
+    const sameWeek = bucketKey(t0, '1W') === bucketKey(t0 + 6 * DAY, '1W');
+    const nextWeek = bucketKey(t0, '1W') !== bucketKey(t0 + 7 * DAY, '1W');
+    expect(sameWeek).toBe(true);
+    expect(nextWeek).toBe(true);
+  });
+
+  it('groups by calendar month / quarter / year', () => {
+    const jan = Date.UTC(2024, 0, 15) / 1000;
+    const feb = Date.UTC(2024, 1, 15) / 1000;
+    const apr = Date.UTC(2024, 3, 15) / 1000;
+    const nextJan = Date.UTC(2025, 0, 15) / 1000;
+    // Month buckets: Jan != Feb.
+    expect(bucketKey(jan, '1M')).not.toBe(bucketKey(feb, '1M'));
+    // Quarter buckets: Jan & Feb share Q1; Apr is Q2.
+    expect(bucketKey(jan, '3M')).toBe(bucketKey(feb, '3M'));
+    expect(bucketKey(jan, '3M')).not.toBe(bucketKey(apr, '3M'));
+    // Year buckets: all of 2024 shares one; 2025 differs.
+    expect(bucketKey(jan, '1Y')).toBe(bucketKey(apr, '1Y'));
+    expect(bucketKey(jan, '1Y')).not.toBe(bucketKey(nextJan, '1Y'));
   });
 });
 
-describe('visibleRangeFor', () => {
-  it('returns null for ALL (caller fits the full history)', () => {
-    expect(visibleRangeFor(dailyCandles(500), 'ALL')).toBeNull();
+describe('resampleCandles', () => {
+  it('returns the source unchanged for 1D and ALL', () => {
+    const candles = dailyCandles(10);
+    expect(resampleCandles(candles, '1D')).toBe(candles);
+    expect(resampleCandles(candles, 'ALL')).toBe(candles);
   });
 
-  it('returns null for empty input', () => {
-    expect(visibleRangeFor([], '1Y')).toBeNull();
+  it('handles empty input', () => {
+    expect(resampleCandles([], '1W')).toEqual([]);
   });
 
-  it('1Y window ends at the last bar and starts ~365 days back', () => {
-    const candles = dailyCandles(500); // ~1.37 years of daily data
-    const range = visibleRangeFor(candles, '1Y')!;
-    const last = candles[candles.length - 1].time;
-    expect(range.to).toBe(last);
-    expect(range.from).toBe(last - 365 * DAY);
-    // The window starts after the first candle, so older data stays draggable.
-    expect(range.from).toBeGreaterThan(candles[0].time);
+  it('collapses daily candles into fewer weekly bars', () => {
+    const candles = dailyCandles(21); // 3 weeks of data
+    const weekly = resampleCandles(candles, '1W');
+    expect(weekly.length).toBeLessThan(candles.length);
+    expect(weekly.length).toBeGreaterThanOrEqual(3);
   });
 
-  it('clamps the window start to the first candle when lookback exceeds history', () => {
-    const candles = dailyCandles(30); // only 30 days available
-    const range = visibleRangeFor(candles, '1Y')!;
-    expect(range.from).toBe(candles[0].time);
-    expect(range.to).toBe(candles[candles.length - 1].time);
+  it('aggregates with first-open / last-close / extreme high-low / summed volume', () => {
+    const candles = dailyCandles(7); // 7 January days → one monthly bar
+    const monthly = resampleCandles(candles, '1M');
+    const bar = monthly[0];
+    const inBar = candles.filter((c) => bucketKey(c.time, '1M') === bar.time);
+    expect(bar.open).toBe(inBar[0].open);
+    expect(bar.close).toBe(inBar[inBar.length - 1].close);
+    expect(bar.high).toBe(Math.max(...inBar.map((c) => c.high)));
+    expect(bar.low).toBe(Math.min(...inBar.map((c) => c.low)));
+    expect(bar.volume).toBe(inBar.reduce((s, c) => s + c.volume, 0));
   });
 
-  it('guarantees at least two visible bars for tiny windows', () => {
-    const candles = dailyCandles(500);
-    const range = visibleRangeFor(candles, '1D')!;
-    // A literal 1-day window would show a single bar; ensure >= 2 are in view.
-    const inWindow = candles.filter((c) => c.time >= range.from && c.time <= range.to);
-    expect(inWindow.length).toBeGreaterThanOrEqual(2);
-  });
-
-  it('produces progressively wider windows for longer timeframes', () => {
-    const candles = dailyCandles(1000);
-    const spans = (['1W', '1M', '3M', '1Y'] as const).map((id) => {
-      const r = visibleRangeFor(candles, id)!;
-      return r.to - r.from;
-    });
-    for (let i = 1; i < spans.length; i++) {
-      expect(spans[i]).toBeGreaterThan(spans[i - 1]);
-    }
+  it('does not mutate the source candles', () => {
+    const candles = dailyCandles(30);
+    const snapshot = JSON.parse(JSON.stringify(candles));
+    resampleCandles(candles, '1M');
+    expect(candles).toEqual(snapshot);
   });
 });
