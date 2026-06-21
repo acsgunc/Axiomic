@@ -4,6 +4,7 @@ Living docs for shipped features and notable fixes. One page per feature area.
 
 ## Features
 
+- [Feature Guard Hook](./feature-guard-hook.md) — Stop hook enforcing docs + tests for code changes
 - [Chart Timeframes](./chart-timeframes.md) — resample candles into bar intervals with a draggable time axis
 - [Test Suite](./testing.md) — backend + frontend tests and how to run them
 - [Loading Live Data in the App](./live-data.md) — enable and use the in-app live fetch
@@ -11,6 +12,7 @@ Living docs for shipped features and notable fixes. One page per feature area.
 
 ## Changelog
 
+- 2026-06-21 — **Added** Feature Guard Stop hook — blocks turn end when source changed without matching `docs/features/` + tests ([feature-guard-hook](./feature-guard-hook.md))
 - 2026-06-21 — **Fixed** chart timeframe buttons now resample candles into bar intervals (1W/1M/3M/1Y) with a visible, draggable time axis ([chart-timeframes](./chart-timeframes.md))
 - 2026-06-21 — **Added** `feature-tests` skill — auto-adds/updates tests and refreshes [docs/TESTING.md](../TESTING.md) for every feature/fix ([testing](./testing.md))
 - 2026-06-21 — **Added** comprehensive test suite (Rust core/data/desktop + Vitest frontend) and [docs/TESTING.md](../TESTING.md) ([testing](./testing.md))

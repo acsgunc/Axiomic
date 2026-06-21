@@ -89,6 +89,16 @@ Docs: [docs/TESTING.md](../../docs/TESTING.md) (the run guide) and
 *how it's verified*. When a prompt triggers one, it almost always triggers the
 other — run both before ending the turn so code, docs, and tests stay in lockstep.
 
+## Automatic enforcement
+
+A **Stop hook** ([.github/hooks/feature-guard.json](../../hooks/feature-guard.json),
+script [feature-guard.mjs](../../hooks/scripts/feature-guard.mjs)) blocks the end
+of a turn when source under `core/src`, `data/src`, `desktop/src-tauri/src`,
+`web/src`, or `proxy/src` changed without a matching test file update, reminding
+the agent to run this skill. It blocks at most once per stop (guarded by
+`stop_hook_active`) and fails open. See
+[docs/features/feature-guard-hook.md](../../docs/features/feature-guard-hook.md).
+
 ## Assets
 
 - [Testing conventions & snippets](./assets/testing-conventions.md)

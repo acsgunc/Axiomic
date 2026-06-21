@@ -83,3 +83,12 @@ Documenting a change and testing it go together. Whenever this skill applies
 (any feature added or bug fixed), also run the **`feature-tests`** skill before
 ending the turn so the change ships with matching tests and an updated
 [docs/TESTING.md](../../docs/TESTING.md).
+
+## Automatic enforcement
+
+A **Stop hook** ([.github/hooks/feature-guard.json](../../hooks/feature-guard.json),
+script [feature-guard.mjs](../../hooks/scripts/feature-guard.mjs)) blocks the end
+of a turn when source code changed without a matching update under
+`docs/features/`, reminding the agent to run this skill. It blocks at most once
+per stop (guarded by `stop_hook_active`) and fails open, so it can never wedge a
+session. See [docs/features/feature-guard-hook.md](../../docs/features/feature-guard-hook.md).
