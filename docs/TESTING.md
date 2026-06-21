@@ -74,7 +74,7 @@ pnpm --dir web test
 ```
 
 Expected totals (current): **core** 30+ tests, **data** 5 tests + 1 doctest,
-**desktop** 4 tests, **frontend** 60 tests.
+**desktop** 4 tests, **frontend** 68 tests.
 
 ---
 
@@ -194,6 +194,16 @@ modules are mocked with `vi.mock` in the store and component tests.
   different per symbol, daily-spaced ascending timestamps, internally
   consistent OHLC (`high >= low`, `high >= open/close`, positive volume).
 - `candlesToCsv` — header + one row per candle, ISO date column formatting.
+
+### Chart timeframes
+
+[web/src/lib/\_\_tests\_\_/timeframe.test.ts](../web/src/lib/__tests__/timeframe.test.ts)
+- `bucketKey` — `1D`/`ALL` keep one bucket per candle; `1W` groups fixed 7-day
+  windows; `1M`/`3M`/`1Y` group by calendar month/quarter/year.
+- `resampleCandles` — returns the source unchanged for `1D`/`ALL`, handles empty
+  input, collapses dailies into fewer weekly bars, and aggregates with
+  first-open / last-close / extreme high-low / summed volume without mutating
+  the source.
 
 ### Data providers
 
