@@ -9,19 +9,22 @@ discovers and uses them, and how to author good ones. Grounded in this repo's
 
 ## Table of contents
 
-- [1. What a skill actually is](#1-what-a-skill-actually-is)
-- [2. The core problem skills solve](#2-the-core-problem-skills-solve)
-- [3. Progressive disclosure: the three levels](#3-progressive-disclosure-the-three-levels)
-- [4. The skill lifecycle, step by step](#4-the-skill-lifecycle-step-by-step)
-- [5. Anatomy of a SKILL.md](#5-anatomy-of-a-skillmd)
-- [6. How the model decides to use a skill](#6-how-the-model-decides-to-use-a-skill)
-- [7. Resources: scripts and references](#7-resources-scripts-and-references)
-- [8. Skills vs. instructions vs. tools vs. hooks vs. MCP](#8-skills-vs-instructions-vs-tools-vs-hooks-vs-mcp)
-- [9. Why this design works (the economics)](#9-why-this-design-works-the-economics)
-- [10. Authoring guide and checklist](#10-authoring-guide-and-checklist)
-- [11. Worked examples from this repo](#11-worked-examples-from-this-repo)
-- [12. Failure modes and how to debug them](#12-failure-modes-and-how-to-debug-them)
-- [13. Mental model summary](#13-mental-model-summary)
+- [How Skills Work in AI Models — A Deep Dive](#how-skills-work-in-ai-models--a-deep-dive)
+  - [Table of contents](#table-of-contents)
+  - [1. What a skill actually is](#1-what-a-skill-actually-is)
+  - [2. The core problem skills solve](#2-the-core-problem-skills-solve)
+  - [3. Progressive disclosure: the three levels](#3-progressive-disclosure-the-three-levels)
+  - [4. The skill lifecycle, step by step](#4-the-skill-lifecycle-step-by-step)
+  - [5. Anatomy of a SKILL.md](#5-anatomy-of-a-skillmd)
+  - [6. How the model decides to use a skill](#6-how-the-model-decides-to-use-a-skill)
+  - [7. Resources: scripts and references](#7-resources-scripts-and-references)
+  - [8. Skills vs. instructions vs. tools vs. hooks vs. MCP](#8-skills-vs-instructions-vs-tools-vs-hooks-vs-mcp)
+  - [9. Why this design works (the economics)](#9-why-this-design-works-the-economics)
+  - [10. Authoring guide and checklist](#10-authoring-guide-and-checklist)
+  - [11. Worked examples from this repo](#11-worked-examples-from-this-repo)
+  - [12. Failure modes and how to debug them](#12-failure-modes-and-how-to-debug-them)
+  - [13. Mental model summary](#13-mental-model-summary)
+    - [See also](#see-also)
 
 ---
 
