@@ -13,6 +13,7 @@ Living docs for shipped features and notable fixes. One page per feature area.
 
 ## Changelog
 
+- 2026-06-21 — **Fixed** `1D` chart rendered an unreadable blob (all ~10 years crammed in via `fitContent` + tiny `minBarSpacing`); the chart now opens on a readable recent window (~160 bars) and scrolls back through history, fixing the "1D not working" and zoom-feels-broken bugs ([chart-timeframes](./chart-timeframes.md), [tradingview-charts](./tradingview-charts.md))
 - 2026-06-21 — **Changed** extended history depth — offline sample data now spans ~10 years and native backends default to full history, so `1Y` shows many candles ([chart-timeframes](./chart-timeframes.md), [market-data](./market-data.md))
 - 2026-06-21 — **Changed** timeframe buttons now set the candle interval (1D daily, 1W weekly, 1M/3M/1Y aggregated) and added zoom in/out + reset-view controls ([chart-timeframes](./chart-timeframes.md), [tradingview-charts](./tradingview-charts.md))
 - 2026-06-21 — **Fixed** timeframe buttons are now zoom/lookback windows over the full history (1Y shows ~250 daily candles, draggable) instead of aggregating to 1–2 bars ([chart-timeframes](./chart-timeframes.md))

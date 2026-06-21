@@ -46,6 +46,31 @@ export function isOhlcType(type: ChartType): boolean {
   return type === 'candles' || type === 'bars' || type === 'heikin-ashi';
 }
 
+/**
+ * Number of most-recent bars shown by default (and on Reset). Mirrors
+ * TradingView, which opens on a readable recent window rather than cramming the
+ * entire history into the pane.
+ */
+export const DEFAULT_VISIBLE_BARS = 160;
+
+/**
+ * Computes the default visible logical range (most-recent `visibleBars` bars,
+ * plus a small right-hand gap) for a series of `len` candles.
+ *
+ * Returns `null` when the chart should simply fit all content: either there is
+ * no data, or there are fewer bars than the target window (so cramming is not a
+ * concern). A non-null range is expressed in lightweight-charts logical (bar
+ * index) coordinates.
+ */
+export function defaultVisibleRange(
+  len: number,
+  visibleBars: number = DEFAULT_VISIBLE_BARS,
+): { from: number; to: number } | null {
+  if (len <= 0 || len <= visibleBars) return null;
+  const to = len - 1 + 2; // small right-hand gap, like TradingView
+  return { from: to - visibleBars, to };
+}
+
 let drawingSeq = 0;
 /** Monotonic id generator for drawings (stable within a session). */
 export function nextDrawingId(prefix: string): string {

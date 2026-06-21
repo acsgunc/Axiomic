@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   CHART_TYPE_LABELS,
+  DEFAULT_VISIBLE_BARS,
+  defaultVisibleRange,
   downloadChartsScreenshot,
   isOhlcType,
   nextDrawingId,
@@ -24,6 +26,33 @@ describe('isOhlcType', () => {
     for (const t of types) {
       expect(CHART_TYPE_LABELS[t]).toBeTruthy();
     }
+  });
+});
+
+describe('defaultVisibleRange', () => {
+  it('returns null for empty data (chart fits content)', () => {
+    expect(defaultVisibleRange(0)).toBeNull();
+  });
+
+  it('returns null when there are fewer bars than the window (fit all)', () => {
+    expect(defaultVisibleRange(10)).toBeNull();
+    expect(defaultVisibleRange(DEFAULT_VISIBLE_BARS)).toBeNull();
+  });
+
+  it('shows only the most recent window for long histories', () => {
+    const range = defaultVisibleRange(3650);
+    expect(range).not.toBeNull();
+    // Right edge sits just past the last bar (3649) with a small gap.
+    expect(range!.to).toBe(3650 - 1 + 2);
+    // The window spans exactly DEFAULT_VISIBLE_BARS bars.
+    expect(range!.to - range!.from).toBe(DEFAULT_VISIBLE_BARS);
+    // The newest bars are visible (window starts well into the series).
+    expect(range!.from).toBeGreaterThan(3000);
+  });
+
+  it('honours a custom window size', () => {
+    const range = defaultVisibleRange(1000, 50);
+    expect(range!.to - range!.from).toBe(50);
   });
 });
 

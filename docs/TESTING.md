@@ -213,6 +213,9 @@ modules are mocked with `vi.mock` in the store and component tests.
 [web/src/lib/\_\_tests\_\_/chart.test.ts](../web/src/lib/__tests__/chart.test.ts)
 - `isOhlcType` — candles/bars/heikin-ashi are OHLC; line/area are close-based;
   every chart type has a human label.
+- `defaultVisibleRange` — returns `null` (fit all) for empty data or histories
+  shorter than the window, and otherwise the most-recent `DEFAULT_VISIBLE_BARS`
+  window (TradingView-style default view); honours a custom window size.
 - `nextDrawingId` — unique, prefixed, monotonically increasing ids.
 - `downloadChartsScreenshot` — ignores null charts (no-op when none present),
   and stacks chart screenshots into one canvas before triggering a download.

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   createChart,
   ColorType,
@@ -20,6 +20,7 @@ import { engine } from '../engine';
 import type { Candle, IndicatorConfig, Series } from '../types';
 import { ChartToolbar } from './ChartToolbar';
 import {
+  defaultVisibleRange,
   downloadChartsScreenshot,
   isOhlcType,
   nextDrawingId,
@@ -168,8 +169,6 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
         secondsVisible: false,
         rightOffset: 6,
         barSpacing: 8,
-        // Allow a long window (e.g. a full year) to compress into a narrow pane.
-        minBarSpacing: 0.05,
       },
       handleScroll: true,
       handleScale: true,
@@ -258,14 +257,31 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
     setRenderTick((t) => t + 1);
   }, [chartType, displayCandles]);
 
-  // Fit the full (aggregated) history to view whenever the data or the selected
-  // timeframe interval changes, so every bar is visible end-to-end by default.
-  useEffect(() => {
+  // Reset the view to a readable, recent window of bars (TradingView-style):
+  // show the most recent `DEFAULT_VISIBLE_BARS` candles at a legible spacing and
+  // let the user scroll back through the rest of the history. When there are
+  // fewer bars than the default window, simply fit everything.
+  const applyDefaultView = useCallback(() => {
     const chart = chartRef.current;
-    if (!chart || displayCandles.length === 0) return;
-    chart.timeScale().fitContent();
+    if (!chart) return;
+    const ts = chart.timeScale();
+    const range = defaultVisibleRange(displayCandles.length);
+    if (range) {
+      ts.setVisibleLogicalRange({
+        from: range.from as Logical,
+        to: range.to as Logical,
+      });
+    } else if (displayCandles.length > 0) {
+      ts.fitContent();
+    }
     setRenderTick((t) => t + 1);
-  }, [timeframe, displayCandles]);
+  }, [displayCandles]);
+
+  // Reset the visible window whenever the data or selected timeframe changes so
+  // the most recent bars are shown at a readable width by default.
+  useEffect(() => {
+    applyDefaultView();
+  }, [timeframe, applyDefaultView]);
 
   // Volume histogram pane (bottom overlay on the main chart).
   useEffect(() => {
@@ -604,7 +620,7 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
     zoom(1 / 0.6);
   }
   function handleFit() {
-    chartRef.current?.timeScale().fitContent();
+    applyDefaultView();
   }
   function handleScreenshot() {
     downloadChartsScreenshot(
