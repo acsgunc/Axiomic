@@ -11,6 +11,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -28,6 +29,9 @@ import {
 import type { Candle } from '../../types';
 import { ChartContextMenu } from '../ChartContextMenu';
 import { ChartMeasureOverlay } from '../ChartMeasureOverlay';
+import { ChartReplayBar, ReplaySelectOverlay } from '../ChartReplayBar';
+import { useChartReplay } from '../../lib/useChartReplay';
+import { replayIndexFromLogical } from '../../lib/replay';
 
 const BG = '#0b0f17';
 const GRID = '#161d2b';
@@ -76,6 +80,18 @@ export const LiveChart = forwardRef<LiveChartHandle, Props>(function LiveChart(
   const candlesRef = useRef<Candle[]>(candles);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [measuring, setMeasuring] = useState(false);
+
+  // Replay over the loaded history (TradingView-style). While active, live
+  // ticks are ignored and the chart shows a growing prefix of the candles.
+  const replay = useChartReplay(candles.length);
+  const replayActiveRef = useRef(false);
+  useEffect(() => {
+    replayActiveRef.current = replay.active;
+  }, [replay.active]);
+  const effectiveCandles = useMemo(
+    () => (replay.active ? candles.slice(0, replay.index) : candles),
+    [candles, replay.active, replay.index],
+  );
 
   // Reset the visible window to the most recent bars (or fit when few exist).
   const applyDefaultView = useCallback(() => {
@@ -143,20 +159,35 @@ export const LiveChart = forwardRef<LiveChartHandle, Props>(function LiveChart(
     };
   }, []);
 
-  // Load/replace the full history whenever the candle array identity changes.
+  // Load/replace the history. When replay is active this fires on each revealed
+  // bar (no view reset); otherwise it reloads on a new candle array.
   useEffect(() => {
     const price = priceRef.current;
     const volume = volumeRef.current;
     const chart = chartRef.current;
     if (!price || !volume || !chart) return;
-    candlesRef.current = candles;
-    price.setData(candles.map(toCandlestick));
-    volume.setData(candles.map(toVolume));
-    applyDefaultView();
-  }, [candles, applyDefaultView]);
+    candlesRef.current = effectiveCandles;
+    price.setData(effectiveCandles.map(toCandlestick));
+    volume.setData(effectiveCandles.map(toVolume));
+    if (!replay.active) applyDefaultView();
+  }, [effectiveCandles, replay.active, applyDefaultView]);
+
+  // Keep the revealed replay edge in view as playback advances.
+  useEffect(() => {
+    if (!replay.active) return;
+    const ts = chartRef.current?.timeScale();
+    if (!ts) return;
+    const range = ts.getVisibleLogicalRange();
+    if (!range) return;
+    const edge = replay.index - 1;
+    if (edge > range.to - 1 || edge < range.from) {
+      ts.setVisibleLogicalRange({ from: edge - VISIBLE_BARS + 4, to: edge + 4 });
+    }
+  }, [replay.active, replay.index]);
 
   useImperativeHandle(ref, () => ({
     update(candle: Candle) {
+      if (replayActiveRef.current) return; // freeze live ticks during replay
       priceRef.current?.update(toCandlestick(candle));
       volumeRef.current?.update(toVolume(candle));
     },
@@ -174,16 +205,36 @@ export const LiveChart = forwardRef<LiveChartHandle, Props>(function LiveChart(
     setCtxMenu({ x: e.clientX - rect.left, y: e.clientY - rect.top });
   }
 
+  function startReplay() {
+    setCtxMenu(null);
+    setMeasuring(false);
+    replay.start();
+  }
+
+  function handleReplayPick(logical: number) {
+    const idx = replayIndexFromLogical(logical, candles.length);
+    replay.pick(idx);
+    const ts = chartRef.current?.timeScale();
+    if (ts) {
+      const edge = idx - 1;
+      ts.setVisibleLogicalRange({ from: edge - VISIBLE_BARS + 4, to: edge + 4 });
+    }
+  }
+
   return (
     <div className="relative h-full w-full" onContextMenu={handleContextMenu}>
       <div ref={containerRef} className="h-full w-full" />
       <ChartMeasureOverlay
         chart={chartRef.current}
         series={priceRef.current as unknown as ISeriesApi<SeriesType> | null}
-        candles={candles}
+        candles={effectiveCandles}
         active={measuring}
         onComplete={() => setMeasuring(false)}
       />
+      {replay.selecting && (
+        <ReplaySelectOverlay chart={chartRef.current} onPick={handleReplayPick} />
+      )}
+      <ChartReplayBar replay={replay} compact />
       {ctxMenu && (
         <ChartContextMenu
           x={ctxMenu.x}
@@ -194,6 +245,11 @@ export const LiveChart = forwardRef<LiveChartHandle, Props>(function LiveChart(
               label: 'Measure',
               title: 'Measure price, %, bars & time (Shift + right-click)',
               onSelect: () => setMeasuring(true),
+            },
+            {
+              label: replay.active ? 'Exit Replay' : 'Replay…',
+              title: 'Replay history bar by bar (TradingView-style)',
+              onSelect: replay.active ? replay.exit : startReplay,
             },
             {
               label: 'Reset Chart View',

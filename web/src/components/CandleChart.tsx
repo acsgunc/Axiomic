@@ -21,7 +21,9 @@ import type { Candle, IndicatorConfig, Series } from '../types';
 import { ChartToolbar } from './ChartToolbar';
 import { ChartContextMenu } from './ChartContextMenu';
 import { ChartMeasureOverlay } from './ChartMeasureOverlay';
+import { ChartReplayBar, ReplaySelectOverlay } from './ChartReplayBar';
 import {
+  DEFAULT_VISIBLE_BARS,
   defaultVisibleRange,
   downloadChartsScreenshot,
   isOhlcType,
@@ -31,6 +33,8 @@ import {
   type DrawTool,
   type ScaleMode,
 } from '../lib/chart';
+import { useChartReplay } from '../lib/useChartReplay';
+import { replayIndexFromLogical } from '../lib/replay';
 import { type TimeframeId } from '../lib/timeframe';
 
 interface Props {
@@ -130,6 +134,14 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [measuring, setMeasuring] = useState(false);
 
+  // Replay (TradingView-style): reveal history one bar at a time. When active,
+  // every downstream computation runs on a truncated prefix of the candles.
+  const replay = useChartReplay(candles.length);
+  const effectiveCandles = useMemo(
+    () => (replay.active ? candles.slice(0, replay.index) : candles),
+    [candles, replay.active, replay.index],
+  );
+
   const [displayCandles, setDisplayCandles] = useState<Candle[]>(candles);
   const [legend, setLegend] = useState<LegendState | null>(null);
   const [overlayError, setOverlayError] = useState<string | null>(null);
@@ -150,16 +162,16 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
     let cancelled = false;
     if (chartType === 'heikin-ashi') {
       engine
-        .heikinAshi(candles)
+        .heikinAshi(effectiveCandles)
         .then((ha) => !cancelled && setDisplayCandles(ha))
-        .catch(() => !cancelled && setDisplayCandles(candles));
+        .catch(() => !cancelled && setDisplayCandles(effectiveCandles));
     } else {
-      setDisplayCandles(candles);
+      setDisplayCandles(effectiveCandles);
     }
     return () => {
       cancelled = true;
     };
-  }, [candles, chartType]);
+  }, [effectiveCandles, chartType]);
 
   // Create the main chart once, wiring crosshair legend + redraw subscriptions.
   useEffect(() => {
@@ -400,7 +412,7 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
   useEffect(() => {
     let cancelled = false;
     const chart = chartRef.current;
-    if (!chart || candles.length === 0) return;
+    if (!chart || effectiveCandles.length === 0) return;
 
     overlayRefs.current.forEach((s) => chart.removeSeries(s));
     overlayRefs.current = [];
@@ -414,8 +426,8 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
           if (ind.kind === 'sma' || ind.kind === 'ema') {
             const series =
               ind.kind === 'sma'
-                ? await engine.sma(candles, ind.period)
-                : await engine.ema(candles, ind.period);
+                ? await engine.sma(effectiveCandles, ind.period)
+                : await engine.ema(effectiveCandles, ind.period);
             if (cancelled) return;
             const line = chart.addLineSeries({ color: ind.color, lineWidth: 2, priceLineVisible: false });
             line.setData(toLineData(series));
@@ -426,7 +438,7 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
               color: ind.color,
             });
           } else if (ind.kind === 'bollinger') {
-            const b = await engine.bollinger(candles, ind.period, 2);
+            const b = await engine.bollinger(effectiveCandles, ind.period, 2);
             if (cancelled) return;
             const bands: [Series, string][] = [
               [b.upper, 'BB Upper'],
@@ -445,7 +457,7 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
         // RSI sub-pane.
         const rsiInd = indicators.find((i) => i.kind === 'rsi' && i.enabled);
         if (rsiInd && rsiSeriesRef.current) {
-          const rsi = await engine.rsi(candles, rsiInd.period);
+          const rsi = await engine.rsi(effectiveCandles, rsiInd.period);
           if (cancelled) return;
           rsiSeriesRef.current.setData(toLineData(rsi));
         }
@@ -453,7 +465,7 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
         // MACD sub-pane.
         const macdInd = indicators.find((i) => i.kind === 'macd' && i.enabled);
         if (macdInd && macdSeriesRef.current) {
-          const m = await engine.macd(candles, 12, 26, 9);
+          const m = await engine.macd(effectiveCandles, 12, 26, 9);
           if (cancelled) return;
           macdSeriesRef.current.macd.setData(toLineData(m.macd));
           macdSeriesRef.current.signal.setData(toLineData(m.signal));
@@ -478,7 +490,7 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
     return () => {
       cancelled = true;
     };
-  }, [candles, indicators, showRsi, showMacd]);
+  }, [effectiveCandles, indicators, showRsi, showMacd]);
 
   // --- Drawing layer -------------------------------------------------------
 
@@ -654,6 +666,45 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
     setMeasuring(true);
   }
 
+  // Arm replay: disable measure/draw and wait for a start-bar click.
+  function startReplay() {
+    setCtxMenu(null);
+    setDrawTool('none');
+    setMeasuring(false);
+    replay.start();
+  }
+
+  // Resolve a start-bar click into a revealed-bar count and frame it on screen.
+  function handleReplayPick(logical: number) {
+    const idx = replayIndexFromLogical(logical, candles.length);
+    replay.pick(idx);
+    const ts = chartRef.current?.timeScale();
+    if (ts) {
+      const edge = idx - 1;
+      ts.setVisibleLogicalRange({
+        from: (edge - DEFAULT_VISIBLE_BARS + 6) as Logical,
+        to: (edge + 6) as Logical,
+      });
+    }
+  }
+
+  // Keep the revealed replay edge in view as playback advances (only scroll when
+  // the edge would otherwise leave the visible window, to avoid jitter).
+  useEffect(() => {
+    if (!replay.active) return;
+    const ts = chartRef.current?.timeScale();
+    if (!ts) return;
+    const range = ts.getVisibleLogicalRange();
+    if (!range) return;
+    const edge = replay.index - 1;
+    if (edge > range.to - 1 || edge < range.from) {
+      ts.setVisibleLogicalRange({
+        from: (edge - DEFAULT_VISIBLE_BARS + 6) as Logical,
+        to: (edge + 6) as Logical,
+      });
+    }
+  }, [replay.active, replay.index]);
+
   const last = displayCandles[displayCandles.length - 1];
   const view = legend ?? (last ? legendFromCandle(last) : null);
 
@@ -680,6 +731,8 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
         onZoomOut={handleZoomOut}
         onFit={handleFit}
         onScreenshot={handleScreenshot}
+        replayActive={replay.active}
+        onReplay={replay.active ? replay.exit : startReplay}
       />
 
       <div className="relative min-h-0 flex-1">
@@ -696,6 +749,11 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
                 label: 'Measure',
                 title: 'Measure price, %, bars & time (Shift + right-click)',
                 onSelect: startMeasure,
+              },
+              {
+                label: replay.active ? 'Exit Replay' : 'Replay…',
+                title: 'Replay history bar by bar (TradingView-style)',
+                onSelect: replay.active ? replay.exit : startReplay,
               },
               {
                 label: 'Reset Chart View',
@@ -751,6 +809,12 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
           active={measuring}
           onComplete={() => setMeasuring(false)}
         />
+
+        {/* Replay: start-bar picker + transport controls. */}
+        {replay.selecting && (
+          <ReplaySelectOverlay chart={chartRef.current} onPick={handleReplayPick} />
+        )}
+        <ChartReplayBar replay={replay} />
       </div>
 
       {showRsi && (

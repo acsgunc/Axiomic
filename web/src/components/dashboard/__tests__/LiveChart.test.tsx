@@ -7,6 +7,7 @@ import type { Candle } from '../../../types';
 const fake = vi.hoisted(() => {
   const timeScale = {
     setVisibleLogicalRange: vi.fn(),
+    getVisibleLogicalRange: vi.fn(() => null),
     fitContent: vi.fn(),
     subscribeVisibleLogicalRangeChange: vi.fn(),
     unsubscribeVisibleLogicalRangeChange: vi.fn(),
@@ -108,5 +109,28 @@ describe('LiveChart — measure tool', () => {
     fireEvent.contextMenu(container.firstChild as Element);
     fireEvent.click(screen.getByRole('menuitem', { name: 'Measure' }));
     expect(getByTestId('chart-measure')).toHaveAttribute('data-active', 'true');
+  });
+});
+
+describe('LiveChart — replay tool', () => {
+  it('lists a Replay item in the context menu', () => {
+    const { container } = render(<LiveChart candles={makeCandles(50)} />);
+    fireEvent.contextMenu(container.firstChild as Element);
+    expect(screen.getByRole('menuitem', { name: 'Replay…' })).toBeInTheDocument();
+  });
+
+  it('selecting Replay shows the start-bar picker overlay', () => {
+    const { container, getByTestId } = render(<LiveChart candles={makeCandles(50)} />);
+    fireEvent.contextMenu(container.firstChild as Element);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Replay…' }));
+    expect(getByTestId('replay-select')).toBeInTheDocument();
+  });
+
+  it('picking a start bar shows the replay transport controls', () => {
+    const { container } = render(<LiveChart candles={makeCandles(50)} />);
+    fireEvent.contextMenu(container.firstChild as Element);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Replay…' }));
+    fireEvent.click(screen.getByTestId('replay-select'), { clientX: 100, clientY: 50 });
+    expect(screen.getByRole('toolbar', { name: 'Replay controls' })).toBeInTheDocument();
   });
 });

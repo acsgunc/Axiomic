@@ -24,6 +24,8 @@ interface Props {
   onZoomOut: () => void;
   onFit: () => void;
   onScreenshot: () => void;
+  replayActive: boolean;
+  onReplay: () => void;
 }
 
 const SCALE_MODES: { id: ScaleMode; label: string; title: string }[] = [
@@ -123,6 +125,13 @@ export function ChartToolbar(props: Props) {
       </ToolButton>
       <ToolButton active={false} title="Reset chart view (fit all data)" onClick={props.onFit}>
         ⟲ Reset
+      </ToolButton>
+      <ToolButton
+        active={props.replayActive}
+        title="Replay history bar by bar (TradingView-style)"
+        onClick={props.onReplay}
+      >
+        ⏵ Replay
       </ToolButton>
       <ToolButton
         active={false}

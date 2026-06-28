@@ -76,7 +76,7 @@ pnpm --dir web test
 ```
 
 Expected totals (current): **core** 30+ tests, **data** 5 tests + 1 doctest,
-**desktop** 4 tests, **frontend** 131 tests.
+**desktop** 4 tests, **frontend** 155 tests.
 
 ---
 
@@ -280,6 +280,8 @@ modules are mocked with `vi.mock` in the store and component tests.
   visible window when there are many bars.
 - The context menu lists a **Measure** item; selecting it (or **Shift +
   right-click**, which skips the menu) arms the measure overlay (`data-active`).
+- The context menu lists a **Replay…** item; selecting it shows the start-bar
+  picker, and picking a bar reveals the floating replay transport.
 
 [web/src/components/\_\_tests\_\_/ChartMeasureOverlay.test.tsx](../web/src/components/__tests__/ChartMeasureOverlay.test.tsx)
 - `measurementInfo` math: positive/negative price delta, percentage, bar count
@@ -288,6 +290,25 @@ modules are mocked with `vi.mock` in the store and component tests.
   when active; `Escape` and right-click both dismiss it via `onComplete`.
 - The overlay renders at `z-index > 2` so it sits above lightweight-charts'
   canvases and actually receives pointer input (regression guard).
+
+[web/src/lib/\_\_tests\_\_/replay.test.ts](../web/src/lib/__tests__/replay.test.ts)
+- `replayIntervalMs` converts bars/sec to a clamped ms delay (≥ 20ms; non-positive
+  speeds fall back to 1×).
+- `clampReplayIndex` keeps the revealed count in `[1, total]` (0 when empty);
+  `replayIndexFromLogical` reveals bar `L+1` for a click at logical `L` and clamps.
+
+[web/src/lib/\_\_tests\_\_/useChartReplay.test.ts](../web/src/lib/__tests__/useChartReplay.test.ts)
+- `start()` arms selecting mode at ~60% of history; `pick()` sets the revealed
+  count and stops selecting; `stepForward/Back` move one bar and clamp.
+- `play()` advances one bar per tick (fake timers) and auto-stops at the end;
+  `exit()` resets; changing the total bar count resets replay.
+
+[web/src/components/\_\_tests\_\_/ChartReplayBar.test.tsx](../web/src/components/__tests__/ChartReplayBar.test.tsx)
+- Renders nothing when inactive; shows the transport + `index/total` when active.
+- Transport buttons call `togglePlay`/`stepForward`/`stepBack`/`exit`; the speed
+  select calls `setSpeed`; forward/play are disabled at the end.
+- `ReplaySelectOverlay` maps a click to a logical bar via the time scale and
+  renders at `z-index > 2` (regression guard).
 
 [web/src/components/\_\_tests\_\_/ChartContextMenu.test.tsx](../web/src/components/__tests__/ChartContextMenu.test.tsx)
 - Renders its menu items and positions itself at the given x/y coordinates.

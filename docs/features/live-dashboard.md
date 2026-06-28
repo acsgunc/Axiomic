@@ -29,6 +29,9 @@ interface and registering it — no UI changes.
   context menu with **Reset Chart View**.
 - **Changed** — 2026-06-28 — each live pane gained the **Measure** tool
   (context-menu item + **Shift + right-click** shortcut).
+- **Changed** — 2026-06-29 — each live pane gained the **Replay** tool
+  (context-menu item) — replays the loaded history bar by bar; live ticks are
+  frozen while a pane is in replay.
 
 ## How to use
 
@@ -54,6 +57,10 @@ pnpm --dir proxy dev        # http://localhost:8787 (Yahoo, no API key)
 5. **Right-click** a pane's chart for a context menu — **Reset Chart View**
    snaps the zoom/pan back to the latest bars, and **Measure** (or
    **Shift + right-click**) drags out a price/%/bars/time measurement.
+6. **Replay…** (context menu) replays that pane's loaded history bar by bar:
+   click a bar to start, then play/pause/step/speed via the floating transport.
+   Live updates for that pane pause until you exit replay; other panes keep
+   streaming.
 
 > Hyperliquid streams over a single shared WebSocket and needs no proxy/key.
 > Equities use the existing yfinance path (native crates on desktop, the
@@ -102,5 +109,6 @@ registerSource(alpaca); // now selectable in every pane's source dropdown
 - [web/src/components/dashboard/](../../web/src/components/dashboard/) — `LiveDashboard`, `ChartGrid`, `LivePane`, `LiveChart`, `TickerBar`
 - [web/src/components/ChartContextMenu.tsx](../../web/src/components/ChartContextMenu.tsx) — shared right-click menu (Reset Chart View)
 - [web/src/components/ChartMeasureOverlay.tsx](../../web/src/components/ChartMeasureOverlay.tsx) — shared Measure tool (Shift + right-click)
+- [web/src/components/ChartReplayBar.tsx](../../web/src/components/ChartReplayBar.tsx) — shared Replay transport + start-bar picker
 - [web/src/App.tsx](../../web/src/App.tsx) — Live Grid / Analyse view switcher
 - [proxy/src/worker.ts](../../proxy/src/worker.ts) — `interval`/`range` params + broadened symbol regex
