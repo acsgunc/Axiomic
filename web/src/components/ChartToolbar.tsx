@@ -2,9 +2,11 @@ import { Button } from './ui';
 import { cn } from '../lib/utils';
 import {
   CHART_TYPE_LABELS,
+  VIEW_MODE_OPTIONS,
   type ChartType,
   type DrawTool,
   type ScaleMode,
+  type ViewMode,
 } from '../lib/chart';
 
 interface Props {
@@ -26,6 +28,10 @@ interface Props {
   onScreenshot: () => void;
   replayActive: boolean;
   onReplay: () => void;
+  viewMode: ViewMode;
+  onViewMode: (m: ViewMode) => void;
+  fullscreen: boolean;
+  onToggleFullscreen: () => void;
 }
 
 const SCALE_MODES: { id: ScaleMode; label: string; title: string }[] = [
@@ -139,6 +145,29 @@ export function ChartToolbar(props: Props) {
         onClick={props.onScreenshot}
       >
         ⤓ PNG
+      </ToolButton>
+
+      <Divider />
+
+      {/* View mode: chart / table / split */}
+      <div className="flex items-center gap-0.5">
+        {VIEW_MODE_OPTIONS.map((v) => (
+          <ToolButton
+            key={v.id}
+            active={props.viewMode === v.id}
+            title={v.title}
+            onClick={() => props.onViewMode(v.id)}
+          >
+            {v.label}
+          </ToolButton>
+        ))}
+      </div>
+      <ToolButton
+        active={props.fullscreen}
+        title={props.fullscreen ? 'Exit full screen (Esc)' : 'Full screen'}
+        onClick={props.onToggleFullscreen}
+      >
+        ⤢ {props.fullscreen ? 'Exit' : 'Full'}
       </ToolButton>
     </div>
   );

@@ -16,6 +16,19 @@ export type ScaleMode = 'normal' | 'log' | 'percent';
 /** Active pointer drawing tool. `none` lets the chart pan/zoom normally. */
 export type DrawTool = 'none' | 'trend' | 'hline';
 
+/**
+ * How the analysis surface is laid out: the chart, a TradingView-style data
+ * table, or both side by side.
+ */
+export type ViewMode = 'chart' | 'table' | 'split';
+
+/** Ordered view-mode options for the toolbar segmented control. */
+export const VIEW_MODE_OPTIONS: { id: ViewMode; label: string; title: string }[] = [
+  { id: 'chart', label: 'Chart', title: 'Chart only' },
+  { id: 'table', label: 'Table', title: 'Data table only' },
+  { id: 'split', label: 'Split', title: 'Chart and table side by side' },
+];
+
 /** A free-form trend line anchored to logical (x) + price (y) coordinates. */
 export interface TrendDrawing {
   id: string;

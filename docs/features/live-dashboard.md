@@ -32,6 +32,8 @@ interface and registering it — no UI changes.
 - **Changed** — 2026-06-29 — each live pane gained the **Replay** tool
   (context-menu item) — replays the loaded history bar by bar; live ticks are
   frozen while a pane is in replay.
+- **Changed** — 2026-06-29 — each live pane gained a **Table View** / **Split
+  View** (OHLCV data window) and a **Full Screen** toggle (context-menu items).
 
 ## How to use
 
@@ -61,6 +63,11 @@ pnpm --dir proxy dev        # http://localhost:8787 (Yahoo, no API key)
    click a bar to start, then play/pause/step/speed via the floating transport.
    Live updates for that pane pause until you exit replay; other panes keep
    streaming.
+7. **Table View** / **Split View** (context menu) show that pane's OHLCV data as
+   a TradingView-style data table — on its own, or side by side with the chart.
+   **Full Screen** expands the pane (chart and/or table) to fill the window;
+   `Esc` or **Exit Full Screen** returns to the grid. Each pane's view mode and
+   full-screen state are independent, and the other panes keep streaming.
 
 > Hyperliquid streams over a single shared WebSocket and needs no proxy/key.
 > Equities use the existing yfinance path (native crates on desktop, the
@@ -110,5 +117,6 @@ registerSource(alpaca); // now selectable in every pane's source dropdown
 - [web/src/components/ChartContextMenu.tsx](../../web/src/components/ChartContextMenu.tsx) — shared right-click menu (Reset Chart View)
 - [web/src/components/ChartMeasureOverlay.tsx](../../web/src/components/ChartMeasureOverlay.tsx) — shared Measure tool (Shift + right-click)
 - [web/src/components/ChartReplayBar.tsx](../../web/src/components/ChartReplayBar.tsx) — shared Replay transport + start-bar picker
+- [web/src/components/CandleTable.tsx](../../web/src/components/CandleTable.tsx) — shared OHLCV data table (Table / Split view)
 - [web/src/App.tsx](../../web/src/App.tsx) — Live Grid / Analyse view switcher
 - [proxy/src/worker.ts](../../proxy/src/worker.ts) — `interval`/`range` params + broadened symbol regex

@@ -30,8 +30,11 @@ import type { Candle } from '../../types';
 import { ChartContextMenu } from '../ChartContextMenu';
 import { ChartMeasureOverlay } from '../ChartMeasureOverlay';
 import { ChartReplayBar, ReplaySelectOverlay } from '../ChartReplayBar';
+import { CandleTable } from '../CandleTable';
 import { useChartReplay } from '../../lib/useChartReplay';
 import { replayIndexFromLogical } from '../../lib/replay';
+import { type ViewMode } from '../../lib/chart';
+import { cn } from '../../lib/utils';
 
 const BG = '#0b0f17';
 const GRID = '#161d2b';
@@ -80,6 +83,8 @@ export const LiveChart = forwardRef<LiveChartHandle, Props>(function LiveChart(
   const candlesRef = useRef<Candle[]>(candles);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [measuring, setMeasuring] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('chart');
+  const [fullscreen, setFullscreen] = useState(false);
 
   // Replay over the loaded history (TradingView-style). While active, live
   // ticks are ignored and the chart shows a growing prefix of the candles.
@@ -221,20 +226,61 @@ export const LiveChart = forwardRef<LiveChartHandle, Props>(function LiveChart(
     }
   }
 
+  // Esc exits full screen (unless a tool is mid-gesture, which uses Esc itself).
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !measuring && !replay.selecting) {
+        setFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [fullscreen, measuring, replay.selecting]);
+
   return (
-    <div className="relative h-full w-full" onContextMenu={handleContextMenu}>
-      <div ref={containerRef} className="h-full w-full" />
-      <ChartMeasureOverlay
-        chart={chartRef.current}
-        series={priceRef.current as unknown as ISeriesApi<SeriesType> | null}
-        candles={effectiveCandles}
-        active={measuring}
-        onComplete={() => setMeasuring(false)}
-      />
-      {replay.selecting && (
-        <ReplaySelectOverlay chart={chartRef.current} onPick={handleReplayPick} />
+    <div
+      className={cn(
+        fullscreen ? 'fixed inset-0 z-50 bg-base-900 p-2' : 'h-full w-full',
       )}
-      <ChartReplayBar replay={replay} compact />
+      onContextMenu={handleContextMenu}
+    >
+      <div
+        className={cn(
+          'flex h-full w-full',
+          viewMode === 'split' ? 'flex-row gap-1' : 'flex-col',
+        )}
+      >
+        <div
+          className={cn(
+            'relative min-h-0 min-w-0 flex-1',
+            viewMode === 'table' && 'hidden',
+          )}
+        >
+          <div ref={containerRef} className="h-full w-full" />
+          <ChartMeasureOverlay
+            chart={chartRef.current}
+            series={priceRef.current as unknown as ISeriesApi<SeriesType> | null}
+            candles={effectiveCandles}
+            active={measuring}
+            onComplete={() => setMeasuring(false)}
+          />
+          {replay.selecting && (
+            <ReplaySelectOverlay chart={chartRef.current} onPick={handleReplayPick} />
+          )}
+          <ChartReplayBar replay={replay} compact />
+        </div>
+        {viewMode !== 'chart' && (
+          <div
+            className={cn(
+              'min-h-0 min-w-0 overflow-hidden rounded-md border border-base-700 bg-base-800/40',
+              viewMode === 'split' ? 'flex-1' : 'flex-1',
+            )}
+          >
+            <CandleTable candles={effectiveCandles} />
+          </div>
+        )}
+      </div>
       {ctxMenu && (
         <ChartContextMenu
           x={ctxMenu.x}
@@ -250,6 +296,24 @@ export const LiveChart = forwardRef<LiveChartHandle, Props>(function LiveChart(
               label: replay.active ? 'Exit Replay' : 'Replay…',
               title: 'Replay history bar by bar (TradingView-style)',
               onSelect: replay.active ? replay.exit : startReplay,
+            },
+            {
+              label:
+                viewMode === 'table' ? 'Hide Table' : 'Table View',
+              title: 'Show the OHLCV data table',
+              onSelect: () =>
+                setViewMode((m) => (m === 'table' ? 'chart' : 'table')),
+            },
+            {
+              label: viewMode === 'split' ? 'Hide Split' : 'Split View',
+              title: 'Show chart and table side by side',
+              onSelect: () =>
+                setViewMode((m) => (m === 'split' ? 'chart' : 'split')),
+            },
+            {
+              label: fullscreen ? 'Exit Full Screen' : 'Full Screen',
+              title: 'Expand this pane to fill the window (Esc to exit)',
+              onSelect: () => setFullscreen((v) => !v),
             },
             {
               label: 'Reset Chart View',

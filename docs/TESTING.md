@@ -76,7 +76,7 @@ pnpm --dir web test
 ```
 
 Expected totals (current): **core** 30+ tests, **data** 5 tests + 1 doctest,
-**desktop** 4 tests, **frontend** 155 tests.
+**desktop** 4 tests, **frontend** 165 tests.
 
 ---
 
@@ -309,6 +309,21 @@ modules are mocked with `vi.mock` in the store and component tests.
   select calls `setSpeed`; forward/play are disabled at the end.
 - `ReplaySelectOverlay` maps a click to a logical bar via the time scale and
   renders at `z-index > 2` (regression guard).
+
+[web/src/lib/\_\_tests\_\_/candleTable.test.ts](../web/src/lib/__tests__/candleTable.test.ts)
+- `buildCandleRows` computes each bar's change vs the previous close (the first
+  bar falls back to its own open) and the matching percentage.
+- Rows are most-recent-first by default and chronological when `descending` is
+  false; OHLCV is carried through unchanged; empty input yields an empty array.
+
+[web/src/components/\_\_tests\_\_/CandleTable.test.tsx](../web/src/components/__tests__/CandleTable.test.tsx)
+- Renders a header and one row per candle, newest first, with a signed change
+  and percentage per bar; shows a “No data.” empty state for no candles.
+
+[web/src/components/\_\_tests\_\_/ChartToolbar.test.tsx](../web/src/components/__tests__/ChartToolbar.test.tsx)
+- The **Chart / Table / Split** segmented control calls `onViewMode` with the
+  chosen mode; the **Full** button calls `onToggleFullscreen` and flips its
+  label to **Exit** when `fullscreen` is set.
 
 [web/src/components/\_\_tests\_\_/ChartContextMenu.test.tsx](../web/src/components/__tests__/ChartContextMenu.test.tsx)
 - Renders its menu items and positions itself at the given x/y coordinates.

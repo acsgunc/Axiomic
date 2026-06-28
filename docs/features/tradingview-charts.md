@@ -21,6 +21,8 @@ the Heikin-Ashi transform — runs in the Rust/WASM core.
   (context-menu item + **Shift + right-click** shortcut)
 - **Changed** — 2026-06-29 — added a TradingView-style **Replay** tool
   (toolbar **⏵ Replay** button + context-menu item)
+- **Changed** — 2026-06-29 — added a **Table view** (OHLCV data window) with
+  **Chart / Table / Split** view modes and a **⤢ Full** full-screen toggle
 
 ## How to use
 
@@ -51,6 +53,14 @@ Open the web app, select a symbol, and use the toolbar above the chart:
   selector (0.5–10× bars/sec), a `revealed/total` readout, and **✕** to exit.
   Indicators (SMA/EMA/Bollinger/RSI/MACD) recompute on the revealed prefix, and
   the chart auto-scrolls to keep the replay edge in view.
+- **Chart / Table / Split** (toolbar segmented control) switch the layout:
+  `Chart` is the chart only, `Table` is a TradingView-style **data window** (a
+  scrollable OHLCV table, most-recent first, with each bar's signed change and
+  % change colour-coded green/red), and `Split` shows the chart and table side
+  by side. The table tracks the active timeframe and the replay prefix.
+- **⤢ Full** toggles full screen — the chart (and table, in Table/Split mode)
+  expand to fill the window so you can read both at once. Press `Esc` or click
+  **⤢ Exit** to leave full screen.
 
 The legend in the top-left follows the crosshair, showing O/H/L/C, the bar's
 percentage change, and live values for each enabled overlay (SMA/EMA/Bollinger).
@@ -97,9 +107,11 @@ const ha = await engine.heikinAshi(candles); // Candle[] (same shape as input)
 - [web/src/components/ChartContextMenu.tsx](../../web/src/components/ChartContextMenu.tsx) — right-click context menu (shared with the live dashboard panes)
 - [web/src/components/ChartMeasureOverlay.tsx](../../web/src/components/ChartMeasureOverlay.tsx) — Measure tool overlay + `measurementInfo` math (shared)
 - [web/src/components/ChartReplayBar.tsx](../../web/src/components/ChartReplayBar.tsx) — Replay transport + start-bar picker overlay (shared)
+- [web/src/components/CandleTable.tsx](../../web/src/components/CandleTable.tsx) — TradingView-style OHLCV data table (shared)
+- [web/src/lib/candleTable.ts](../../web/src/lib/candleTable.ts) — pure table-row builder (change vs previous close)
 - [web/src/lib/useChartReplay.ts](../../web/src/lib/useChartReplay.ts) — replay state machine + playback timer
 - [web/src/lib/replay.ts](../../web/src/lib/replay.ts) — pure replay helpers (speeds, clamping, click→index)
-- [web/src/lib/chart.ts](../../web/src/lib/chart.ts) — chart types, ids, PNG export helper
+- [web/src/lib/chart.ts](../../web/src/lib/chart.ts) — chart types, ids, PNG export helper, `ViewMode`
 - [web/src/engine.ts](../../web/src/engine.ts) — `heikinAshi` bridge
 - [core/src/indicators.rs](../../core/src/indicators.rs) — `heikin_ashi`
 - [core/src/lib.rs](../../core/src/lib.rs) — `heikin_ashi` WASM export

@@ -14,6 +14,7 @@ Living docs for shipped features and notable fixes. One page per feature area.
 
 ## Changelog
 
+- 2026-06-29 — **Added** TradingView-style **Table view** (OHLCV data window) on every chart — **Chart / Table / Split** view modes plus a **Full Screen** toggle so the chart and table can be read together; toolbar controls on the analysis chart + context-menu items on every live pane ([tradingview-charts](./tradingview-charts.md), [live-dashboard](./live-dashboard.md))
 - 2026-06-29 — **Added** TradingView-style **Replay** tool on every chart — reveal history bar by bar with play/pause, step, and speed; toolbar button on the analysis chart + context-menu item on every chart/pane ([tradingview-charts](./tradingview-charts.md), [live-dashboard](./live-dashboard.md))
 - 2026-06-28 — **Fixed** the **Measure** tool (and the Trend/H-Line drawing layer) not responding — the SVG overlays now sit above lightweight-charts' `z-index: 2` canvas so they receive pointer input ([tradingview-charts](./tradingview-charts.md), [live-dashboard](./live-dashboard.md))
 - 2026-06-28 — **Added** TradingView-style **Measure** tool (context-menu item + **Shift + right-click**) on every chart — drag to read price change, %, bars and elapsed time ([tradingview-charts](./tradingview-charts.md), [live-dashboard](./live-dashboard.md))

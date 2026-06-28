@@ -22,6 +22,7 @@ import { ChartToolbar } from './ChartToolbar';
 import { ChartContextMenu } from './ChartContextMenu';
 import { ChartMeasureOverlay } from './ChartMeasureOverlay';
 import { ChartReplayBar, ReplaySelectOverlay } from './ChartReplayBar';
+import { CandleTable } from './CandleTable';
 import {
   DEFAULT_VISIBLE_BARS,
   defaultVisibleRange,
@@ -32,10 +33,12 @@ import {
   type Drawing,
   type DrawTool,
   type ScaleMode,
+  type ViewMode,
 } from '../lib/chart';
 import { useChartReplay } from '../lib/useChartReplay';
 import { replayIndexFromLogical } from '../lib/replay';
 import { type TimeframeId } from '../lib/timeframe';
+import { cn } from '../lib/utils';
 
 interface Props {
   candles: Candle[];
@@ -133,6 +136,8 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
   const [cursorPt, setCursorPt] = useState<{ logical: number; price: number } | null>(null);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [measuring, setMeasuring] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('chart');
+  const [fullscreen, setFullscreen] = useState(false);
 
   // Replay (TradingView-style): reveal history one bar at a time. When active,
   // every downstream computation runs on a truncated prefix of the candles.
@@ -705,11 +710,30 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
     }
   }, [replay.active, replay.index]);
 
+  // Esc exits full screen (unless a tool is mid-gesture, which uses Esc itself).
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !measuring && !replay.selecting) {
+        setFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [fullscreen, measuring, replay.selecting]);
+
   const last = displayCandles[displayCandles.length - 1];
   const view = legend ?? (last ? legendFromCandle(last) : null);
 
   return (
-    <div className="flex h-full flex-col">
+    <div
+      className={cn(
+        'flex flex-col',
+        fullscreen
+          ? 'fixed inset-0 z-50 gap-1 bg-base-900 p-2'
+          : 'h-full',
+      )}
+    >
       <ChartToolbar
         chartType={chartType}
         onChartType={setChartType}
@@ -733,8 +757,25 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
         onScreenshot={handleScreenshot}
         replayActive={replay.active}
         onReplay={replay.active ? replay.exit : startReplay}
+        viewMode={viewMode}
+        onViewMode={setViewMode}
+        fullscreen={fullscreen}
+        onToggleFullscreen={() => setFullscreen((v) => !v)}
       />
 
+      <div
+        className={cn(
+          'flex min-h-0 flex-1',
+          viewMode === 'split' ? 'flex-col gap-1 lg:flex-row' : 'flex-col',
+        )}
+      >
+        {/* Chart column (kept mounted so the chart isn't torn down on toggle). */}
+        <div
+          className={cn(
+            'flex min-h-0 min-w-0 flex-1 flex-col',
+            viewMode === 'table' && 'hidden',
+          )}
+        >
       <div className="relative min-h-0 flex-1">
         <div ref={containerRef} className="h-full w-full" onContextMenu={handleContextMenu} />
 
@@ -829,6 +870,21 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
           <div ref={macdContainerRef} className="h-full" />
         </div>
       )}
+        </div>
+
+        {/* Data table column (TradingView-style). */}
+        {viewMode !== 'chart' && (
+          <div
+            className={cn(
+              'min-h-0 min-w-0 overflow-hidden rounded-md border border-base-700 bg-base-800/40',
+              viewMode === 'split' ? 'flex-1 lg:max-w-[46%]' : 'flex-1',
+            )}
+          >
+            <CandleTable candles={effectiveCandles} />
+          </div>
+        )}
+      </div>
+
       {overlayError && <p className="shrink-0 px-2 text-xs text-accent-down">{overlayError}</p>}
     </div>
   );
