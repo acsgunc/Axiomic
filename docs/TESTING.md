@@ -76,7 +76,7 @@ pnpm --dir web test
 ```
 
 Expected totals (current): **core** 30+ tests, **data** 5 tests + 1 doctest,
-**desktop** 4 tests, **frontend** 111 tests.
+**desktop** 4 tests, **frontend** 117 tests.
 
 ---
 
@@ -272,6 +272,13 @@ modules are mocked with `vi.mock` in the store and component tests.
 - Renders the symbol, source badge and adaptively-formatted price.
 - **Flashes green** on an up-tick then fades back to the neutral background.
 - Shows a loading state with no price.
+
+[web/src/components/\_\_tests\_\_/ChartContextMenu.test.tsx](../web/src/components/__tests__/ChartContextMenu.test.tsx)
+- Renders its menu items and positions itself at the given x/y coordinates.
+- Clicking an item calls `onSelect` then `onClose`; **Reset Chart View** is the
+  built-in item wired to the chart's reset-view action.
+- Closes on `Escape` and on an outside (document-body) click.
+- A `disabled` item does not fire `onSelect`.
 
 ### Live dashboard — grid + market data
 

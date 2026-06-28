@@ -14,6 +14,7 @@ Living docs for shipped features and notable fixes. One page per feature area.
 
 ## Changelog
 
+- 2026-06-28 — **Added** chart right-click context menu with a **Reset Chart View** action ([tradingview-charts](./tradingview-charts.md))
 - 2026-06-22 — **Added** live multi-chart dashboard — configurable 1/2/4/6/8 grid (persisted), Hyperliquid WebSocket crypto + yfinance equities (US/SG/India), independent per-pane symbol/timeframe, colour-coded flashing ticker bars, and a pluggable `MarketDataSource` registry; proxy now accepts `interval`/`range` and a broadened symbol regex for `*.SI`/`*.NS` tickers ([live-dashboard](./live-dashboard.md))
 - 2026-06-21 — **Added** browser **Source** provider selector (like the desktop) — the Data panel dropdown forwards a `provider` query param to the proxy, routed to Yahoo's query1/query2 edge hosts ([live-data](./live-data.md))
 - 2026-06-21 — **Fixed** browser live data ("Network error contacting the data proxy") — the proxy now fronts Yahoo Finance (free, **no API key**) and pins dev port 8787, so live fetch works with just `pnpm --dir proxy dev` ([live-data](./live-data.md))

@@ -19,6 +19,7 @@ import {
 import { engine } from '../engine';
 import type { Candle, IndicatorConfig, Series } from '../types';
 import { ChartToolbar } from './ChartToolbar';
+import { ChartContextMenu } from './ChartContextMenu';
 import {
   defaultVisibleRange,
   downloadChartsScreenshot,
@@ -125,6 +126,7 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [pending, setPending] = useState<{ logical: number; price: number } | null>(null);
   const [cursorPt, setCursorPt] = useState<{ logical: number; price: number } | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
 
   const [displayCandles, setDisplayCandles] = useState<Candle[]>(candles);
   const [legend, setLegend] = useState<LegendState | null>(null);
@@ -629,6 +631,14 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
     );
   }
 
+  // Open a right-click context menu positioned within the chart area.
+  function handleContextMenu(e: React.MouseEvent) {
+    if (drawTool !== 'none') return; // let drawing mode use native behavior
+    e.preventDefault();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setCtxMenu({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  }
+
   const last = displayCandles[displayCandles.length - 1];
   const view = legend ?? (last ? legendFromCandle(last) : null);
 
@@ -658,7 +668,23 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
       />
 
       <div className="relative min-h-0 flex-1">
-        <div ref={containerRef} className="h-full w-full" />
+        <div ref={containerRef} className="h-full w-full" onContextMenu={handleContextMenu} />
+
+        {/* Right-click context menu. */}
+        {ctxMenu && (
+          <ChartContextMenu
+            x={ctxMenu.x}
+            y={ctxMenu.y}
+            onClose={() => setCtxMenu(null)}
+            items={[
+              {
+                label: 'Reset Chart View',
+                title: 'Reset zoom & pan to the default window',
+                onSelect: handleFit,
+              },
+            ]}
+          />
+        )}
 
         {/* Crosshair-following legend. */}
         {view && (

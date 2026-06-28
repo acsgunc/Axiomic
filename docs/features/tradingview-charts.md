@@ -16,6 +16,7 @@ the Heikin-Ashi transform — runs in the Rust/WASM core.
 ## Status
 
 - **Added** — 2026-06-21
+- **Changed** — 2026-06-28 — added a right-click context menu with **Reset Chart View**
 
 ## How to use
 
@@ -31,6 +32,10 @@ Open the web app, select a symbol, and use the toolbar above the chart:
   the default recent window (the most recent ~160 bars at a readable width,
   TradingView-style) and you can scroll/pan back through the full history.
 - **⤓ PNG** downloads the chart (main + RSI + MACD panes stacked) as a PNG.
+- **Right-click** anywhere on the chart to open a context menu. **Reset Chart
+  View** restores the default recent window (same as the toolbar's **⟲ Reset**).
+  The menu closes on selection, outside click, or `Escape`. (Right-click is
+  suppressed while a drawing tool is active so it doesn't interrupt drawing.)
 
 The legend in the top-left follows the crosshair, showing O/H/L/C, the bar's
 percentage change, and live values for each enabled overlay (SMA/EMA/Bollinger).
@@ -69,6 +74,7 @@ const ha = await engine.heikinAshi(candles); // Candle[] (same shape as input)
 
 - [web/src/components/CandleChart.tsx](../../web/src/components/CandleChart.tsx) — chart, panes, legend, drawing layer
 - [web/src/components/ChartToolbar.tsx](../../web/src/components/ChartToolbar.tsx) — toolbar controls
+- [web/src/components/ChartContextMenu.tsx](../../web/src/components/ChartContextMenu.tsx) — right-click context menu
 - [web/src/lib/chart.ts](../../web/src/lib/chart.ts) — chart types, ids, PNG export helper
 - [web/src/engine.ts](../../web/src/engine.ts) — `heikinAshi` bridge
 - [core/src/indicators.rs](../../core/src/indicators.rs) — `heikin_ashi`
