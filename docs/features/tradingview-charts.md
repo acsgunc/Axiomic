@@ -74,7 +74,7 @@ const ha = await engine.heikinAshi(candles); // Candle[] (same shape as input)
 
 - [web/src/components/CandleChart.tsx](../../web/src/components/CandleChart.tsx) — chart, panes, legend, drawing layer
 - [web/src/components/ChartToolbar.tsx](../../web/src/components/ChartToolbar.tsx) — toolbar controls
-- [web/src/components/ChartContextMenu.tsx](../../web/src/components/ChartContextMenu.tsx) — right-click context menu
+- [web/src/components/ChartContextMenu.tsx](../../web/src/components/ChartContextMenu.tsx) — right-click context menu (shared with the live dashboard panes)
 - [web/src/lib/chart.ts](../../web/src/lib/chart.ts) — chart types, ids, PNG export helper
 - [web/src/engine.ts](../../web/src/engine.ts) — `heikinAshi` bridge
 - [core/src/indicators.rs](../../core/src/indicators.rs) — `heikin_ashi`

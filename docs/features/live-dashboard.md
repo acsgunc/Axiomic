@@ -25,6 +25,8 @@ interface and registering it — no UI changes.
   flashing ticker bars, responsive grid, and intraday/range support in the proxy
   (plus a broadened symbol regex so Singapore `*.SI` and Indian `*.NS` tickers
   work).
+- **Changed** — 2026-06-28 — each live pane's chart now has a right-click
+  context menu with **Reset Chart View**.
 
 ## How to use
 
@@ -47,6 +49,8 @@ pnpm --dir proxy dev        # http://localhost:8787 (Yahoo, no API key)
 4. The ticker bar flashes **green** on up-ticks and **red** on down-ticks; the
    `%` shown is the move vs. the previous bar's close (e.g. today's change on a
    daily chart). A green dot marks a live pane.
+5. **Right-click** a pane's chart for a context menu — **Reset Chart View**
+   snaps the zoom/pan back to the latest bars.
 
 > Hyperliquid streams over a single shared WebSocket and needs no proxy/key.
 > Equities use the existing yfinance path (native crates on desktop, the
@@ -93,5 +97,6 @@ registerSource(alpaca); // now selectable in every pane's source dropdown
 - [web/src/lib/gridLayout.ts](../../web/src/lib/gridLayout.ts) — grid geometry
 - [web/src/store/useDashboardStore.ts](../../web/src/store/useDashboardStore.ts) — persisted chart count + pane config
 - [web/src/components/dashboard/](../../web/src/components/dashboard/) — `LiveDashboard`, `ChartGrid`, `LivePane`, `LiveChart`, `TickerBar`
+- [web/src/components/ChartContextMenu.tsx](../../web/src/components/ChartContextMenu.tsx) — shared right-click menu (Reset Chart View)
 - [web/src/App.tsx](../../web/src/App.tsx) — Live Grid / Analyse view switcher
 - [proxy/src/worker.ts](../../proxy/src/worker.ts) — `interval`/`range` params + broadened symbol regex

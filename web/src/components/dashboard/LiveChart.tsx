@@ -8,9 +8,11 @@
 
 import {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useRef,
+  useState,
 } from 'react';
 import {
   createChart,
@@ -23,6 +25,7 @@ import {
   type UTCTimestamp,
 } from 'lightweight-charts';
 import type { Candle } from '../../types';
+import { ChartContextMenu } from '../ChartContextMenu';
 
 const BG = '#0b0f17';
 const GRID = '#161d2b';
@@ -68,6 +71,21 @@ export const LiveChart = forwardRef<LiveChartHandle, Props>(function LiveChart(
   const chartRef = useRef<IChartApi | null>(null);
   const priceRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const volumeRef = useRef<ISeriesApi<'Histogram'> | null>(null);
+  const candlesRef = useRef<Candle[]>(candles);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+
+  // Reset the visible window to the most recent bars (or fit when few exist).
+  const applyDefaultView = useCallback(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    const count = candlesRef.current.length;
+    if (count > VISIBLE_BARS) {
+      const to = count - 1 + 4;
+      chart.timeScale().setVisibleLogicalRange({ from: to - VISIBLE_BARS, to });
+    } else {
+      chart.timeScale().fitContent();
+    }
+  }, []);
 
   // Create the chart once.
   useEffect(() => {
@@ -128,15 +146,11 @@ export const LiveChart = forwardRef<LiveChartHandle, Props>(function LiveChart(
     const volume = volumeRef.current;
     const chart = chartRef.current;
     if (!price || !volume || !chart) return;
+    candlesRef.current = candles;
     price.setData(candles.map(toCandlestick));
     volume.setData(candles.map(toVolume));
-    if (candles.length > VISIBLE_BARS) {
-      const to = candles.length - 1 + 4;
-      chart.timeScale().setVisibleLogicalRange({ from: to - VISIBLE_BARS, to });
-    } else {
-      chart.timeScale().fitContent();
-    }
-  }, [candles]);
+    applyDefaultView();
+  }, [candles, applyDefaultView]);
 
   useImperativeHandle(ref, () => ({
     update(candle: Candle) {
@@ -145,5 +159,29 @@ export const LiveChart = forwardRef<LiveChartHandle, Props>(function LiveChart(
     },
   }), []);
 
-  return <div ref={containerRef} className="h-full w-full" />;
+  function handleContextMenu(e: React.MouseEvent) {
+    e.preventDefault();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setCtxMenu({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  }
+
+  return (
+    <div className="relative h-full w-full" onContextMenu={handleContextMenu}>
+      <div ref={containerRef} className="h-full w-full" />
+      {ctxMenu && (
+        <ChartContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          onClose={() => setCtxMenu(null)}
+          items={[
+            {
+              label: 'Reset Chart View',
+              title: 'Reset zoom & pan to the latest bars',
+              onSelect: applyDefaultView,
+            },
+          ]}
+        />
+      )}
+    </div>
+  );
 });

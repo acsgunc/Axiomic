@@ -76,7 +76,7 @@ pnpm --dir web test
 ```
 
 Expected totals (current): **core** 30+ tests, **data** 5 tests + 1 doctest,
-**desktop** 4 tests, **frontend** 117 tests.
+**desktop** 4 tests, **frontend** 120 tests.
 
 ---
 
@@ -272,6 +272,12 @@ modules are mocked with `vi.mock` in the store and component tests.
 - Renders the symbol, source badge and adaptively-formatted price.
 - **Flashes green** on an up-tick then fades back to the neutral background.
 - Shows a loading state with no price.
+
+[web/src/components/dashboard/\_\_tests\_\_/LiveChart.test.tsx](../web/src/components/dashboard/__tests__/LiveChart.test.tsx)
+- Right-clicking a live pane's chart opens the context menu with **Reset Chart
+  View** (lightweight-charts is mocked under jsdom).
+- **Reset Chart View** calls `fitContent` when few bars exist and sets a recent
+  visible window when there are many bars.
 
 [web/src/components/\_\_tests\_\_/ChartContextMenu.test.tsx](../web/src/components/__tests__/ChartContextMenu.test.tsx)
 - Renders its menu items and positions itself at the given x/y coordinates.
