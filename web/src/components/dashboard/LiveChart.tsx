@@ -22,10 +22,12 @@ import {
   type HistogramData,
   type IChartApi,
   type ISeriesApi,
+  type SeriesType,
   type UTCTimestamp,
 } from 'lightweight-charts';
 import type { Candle } from '../../types';
 import { ChartContextMenu } from '../ChartContextMenu';
+import { ChartMeasureOverlay } from '../ChartMeasureOverlay';
 
 const BG = '#0b0f17';
 const GRID = '#161d2b';
@@ -73,6 +75,7 @@ export const LiveChart = forwardRef<LiveChartHandle, Props>(function LiveChart(
   const volumeRef = useRef<ISeriesApi<'Histogram'> | null>(null);
   const candlesRef = useRef<Candle[]>(candles);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  const [measuring, setMeasuring] = useState(false);
 
   // Reset the visible window to the most recent bars (or fit when few exist).
   const applyDefaultView = useCallback(() => {
@@ -161,6 +164,12 @@ export const LiveChart = forwardRef<LiveChartHandle, Props>(function LiveChart(
 
   function handleContextMenu(e: React.MouseEvent) {
     e.preventDefault();
+    // Shift + right-click arms the Measure tool directly (TradingView-style).
+    if (e.shiftKey) {
+      setCtxMenu(null);
+      setMeasuring(true);
+      return;
+    }
     const rect = e.currentTarget.getBoundingClientRect();
     setCtxMenu({ x: e.clientX - rect.left, y: e.clientY - rect.top });
   }
@@ -168,12 +177,24 @@ export const LiveChart = forwardRef<LiveChartHandle, Props>(function LiveChart(
   return (
     <div className="relative h-full w-full" onContextMenu={handleContextMenu}>
       <div ref={containerRef} className="h-full w-full" />
+      <ChartMeasureOverlay
+        chart={chartRef.current}
+        series={priceRef.current as unknown as ISeriesApi<SeriesType> | null}
+        candles={candles}
+        active={measuring}
+        onComplete={() => setMeasuring(false)}
+      />
       {ctxMenu && (
         <ChartContextMenu
           x={ctxMenu.x}
           y={ctxMenu.y}
           onClose={() => setCtxMenu(null)}
           items={[
+            {
+              label: 'Measure',
+              title: 'Measure price, %, bars & time (Shift + right-click)',
+              onSelect: () => setMeasuring(true),
+            },
             {
               label: 'Reset Chart View',
               title: 'Reset zoom & pan to the latest bars',

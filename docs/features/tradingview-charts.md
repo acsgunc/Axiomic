@@ -17,6 +17,8 @@ the Heikin-Ashi transform — runs in the Rust/WASM core.
 
 - **Added** — 2026-06-21
 - **Changed** — 2026-06-28 — added a right-click context menu with **Reset Chart View**
+- **Changed** — 2026-06-28 — added a TradingView-style **Measure** tool
+  (context-menu item + **Shift + right-click** shortcut)
 
 ## How to use
 
@@ -36,6 +38,11 @@ Open the web app, select a symbol, and use the toolbar above the chart:
   View** restores the default recent window (same as the toolbar's **⟲ Reset**).
   The menu closes on selection, outside click, or `Escape`. (Right-click is
   suppressed while a drawing tool is active so it doesn't interrupt drawing.)
+- **Measure** (context-menu item, or **Shift + right-click** as a shortcut)
+  arms a TradingView-style measure tool: drag across the chart to read the
+  **price change**, **percentage**, **number of bars**, and **elapsed time**
+  between the two points. The box is colour-coded green (up) / red (down) and
+  reprojects as you pan/zoom. Press `Escape` or right-click to dismiss it.
 
 The legend in the top-left follows the crosshair, showing O/H/L/C, the bar's
 percentage change, and live values for each enabled overlay (SMA/EMA/Bollinger).
@@ -75,6 +82,7 @@ const ha = await engine.heikinAshi(candles); // Candle[] (same shape as input)
 - [web/src/components/CandleChart.tsx](../../web/src/components/CandleChart.tsx) — chart, panes, legend, drawing layer
 - [web/src/components/ChartToolbar.tsx](../../web/src/components/ChartToolbar.tsx) — toolbar controls
 - [web/src/components/ChartContextMenu.tsx](../../web/src/components/ChartContextMenu.tsx) — right-click context menu (shared with the live dashboard panes)
+- [web/src/components/ChartMeasureOverlay.tsx](../../web/src/components/ChartMeasureOverlay.tsx) — Measure tool overlay + `measurementInfo` math (shared)
 - [web/src/lib/chart.ts](../../web/src/lib/chart.ts) — chart types, ids, PNG export helper
 - [web/src/engine.ts](../../web/src/engine.ts) — `heikinAshi` bridge
 - [core/src/indicators.rs](../../core/src/indicators.rs) — `heikin_ashi`

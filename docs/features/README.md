@@ -14,6 +14,7 @@ Living docs for shipped features and notable fixes. One page per feature area.
 
 ## Changelog
 
+- 2026-06-28 — **Added** TradingView-style **Measure** tool (context-menu item + **Shift + right-click**) on every chart — drag to read price change, %, bars and elapsed time ([tradingview-charts](./tradingview-charts.md), [live-dashboard](./live-dashboard.md))
 - 2026-06-28 — **Added** chart right-click context menu with a **Reset Chart View** action — in the analysis chart and every live-grid pane ([tradingview-charts](./tradingview-charts.md), [live-dashboard](./live-dashboard.md))
 - 2026-06-22 — **Added** live multi-chart dashboard — configurable 1/2/4/6/8 grid (persisted), Hyperliquid WebSocket crypto + yfinance equities (US/SG/India), independent per-pane symbol/timeframe, colour-coded flashing ticker bars, and a pluggable `MarketDataSource` registry; proxy now accepts `interval`/`range` and a broadened symbol regex for `*.SI`/`*.NS` tickers ([live-dashboard](./live-dashboard.md))
 - 2026-06-21 — **Added** browser **Source** provider selector (like the desktop) — the Data panel dropdown forwards a `provider` query param to the proxy, routed to Yahoo's query1/query2 edge hosts ([live-data](./live-data.md))

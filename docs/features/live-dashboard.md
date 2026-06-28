@@ -27,6 +27,8 @@ interface and registering it — no UI changes.
   work).
 - **Changed** — 2026-06-28 — each live pane's chart now has a right-click
   context menu with **Reset Chart View**.
+- **Changed** — 2026-06-28 — each live pane gained the **Measure** tool
+  (context-menu item + **Shift + right-click** shortcut).
 
 ## How to use
 
@@ -50,7 +52,8 @@ pnpm --dir proxy dev        # http://localhost:8787 (Yahoo, no API key)
    `%` shown is the move vs. the previous bar's close (e.g. today's change on a
    daily chart). A green dot marks a live pane.
 5. **Right-click** a pane's chart for a context menu — **Reset Chart View**
-   snaps the zoom/pan back to the latest bars.
+   snaps the zoom/pan back to the latest bars, and **Measure** (or
+   **Shift + right-click**) drags out a price/%/bars/time measurement.
 
 > Hyperliquid streams over a single shared WebSocket and needs no proxy/key.
 > Equities use the existing yfinance path (native crates on desktop, the
@@ -98,5 +101,6 @@ registerSource(alpaca); // now selectable in every pane's source dropdown
 - [web/src/store/useDashboardStore.ts](../../web/src/store/useDashboardStore.ts) — persisted chart count + pane config
 - [web/src/components/dashboard/](../../web/src/components/dashboard/) — `LiveDashboard`, `ChartGrid`, `LivePane`, `LiveChart`, `TickerBar`
 - [web/src/components/ChartContextMenu.tsx](../../web/src/components/ChartContextMenu.tsx) — shared right-click menu (Reset Chart View)
+- [web/src/components/ChartMeasureOverlay.tsx](../../web/src/components/ChartMeasureOverlay.tsx) — shared Measure tool (Shift + right-click)
 - [web/src/App.tsx](../../web/src/App.tsx) — Live Grid / Analyse view switcher
 - [proxy/src/worker.ts](../../proxy/src/worker.ts) — `interval`/`range` params + broadened symbol regex

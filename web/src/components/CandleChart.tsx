@@ -20,6 +20,7 @@ import { engine } from '../engine';
 import type { Candle, IndicatorConfig, Series } from '../types';
 import { ChartToolbar } from './ChartToolbar';
 import { ChartContextMenu } from './ChartContextMenu';
+import { ChartMeasureOverlay } from './ChartMeasureOverlay';
 import {
   defaultVisibleRange,
   downloadChartsScreenshot,
@@ -127,6 +128,7 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
   const [pending, setPending] = useState<{ logical: number; price: number } | null>(null);
   const [cursorPt, setCursorPt] = useState<{ logical: number; price: number } | null>(null);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  const [measuring, setMeasuring] = useState(false);
 
   const [displayCandles, setDisplayCandles] = useState<Candle[]>(candles);
   const [legend, setLegend] = useState<LegendState | null>(null);
@@ -632,11 +634,24 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
   }
 
   // Open a right-click context menu positioned within the chart area.
+  // Shift + right-click is a shortcut that arms the Measure tool directly
+  // (TradingView-style), bypassing the menu.
   function handleContextMenu(e: React.MouseEvent) {
     if (drawTool !== 'none') return; // let drawing mode use native behavior
     e.preventDefault();
+    if (e.shiftKey) {
+      startMeasure();
+      return;
+    }
     const rect = e.currentTarget.getBoundingClientRect();
     setCtxMenu({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  }
+
+  // Arm the Measure tool: drag two points to read price/percent/bars/time.
+  function startMeasure() {
+    setCtxMenu(null);
+    setDrawTool('none');
+    setMeasuring(true);
   }
 
   const last = displayCandles[displayCandles.length - 1];
@@ -677,6 +692,11 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
             y={ctxMenu.y}
             onClose={() => setCtxMenu(null)}
             items={[
+              {
+                label: 'Measure',
+                title: 'Measure price, %, bars & time (Shift + right-click)',
+                onSelect: startMeasure,
+              },
               {
                 label: 'Reset Chart View',
                 title: 'Reset zoom & pan to the default window',
@@ -719,6 +739,15 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
         >
           {renderedDrawings}
         </svg>
+
+        {/* Measure tool overlay (Shift + right-click or context menu). */}
+        <ChartMeasureOverlay
+          chart={chartRef.current}
+          series={priceSeriesRef.current}
+          candles={displayCandles}
+          active={measuring}
+          onComplete={() => setMeasuring(false)}
+        />
       </div>
 
       {showRsi && (

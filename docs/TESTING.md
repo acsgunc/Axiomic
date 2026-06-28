@@ -76,7 +76,7 @@ pnpm --dir web test
 ```
 
 Expected totals (current): **core** 30+ tests, **data** 5 tests + 1 doctest,
-**desktop** 4 tests, **frontend** 120 tests.
+**desktop** 4 tests, **frontend** 130 tests.
 
 ---
 
@@ -278,6 +278,14 @@ modules are mocked with `vi.mock` in the store and component tests.
   View** (lightweight-charts is mocked under jsdom).
 - **Reset Chart View** calls `fitContent` when few bars exist and sets a recent
   visible window when there are many bars.
+- The context menu lists a **Measure** item; selecting it (or **Shift +
+  right-click**, which skips the menu) arms the measure overlay (`data-active`).
+
+[web/src/components/\_\_tests\_\_/ChartMeasureOverlay.test.tsx](../web/src/components/__tests__/ChartMeasureOverlay.test.tsx)
+- `measurementInfo` math: positive/negative price delta, percentage, bar count
+  and elapsed time; singularises a one-bar span and omits time when out of range.
+- The overlay is inert (`pointer-events: none`) when inactive and captures input
+  when active; `Escape` and right-click both dismiss it via `onComplete`.
 
 [web/src/components/\_\_tests\_\_/ChartContextMenu.test.tsx](../web/src/components/__tests__/ChartContextMenu.test.tsx)
 - Renders its menu items and positions itself at the given x/y coordinates.
