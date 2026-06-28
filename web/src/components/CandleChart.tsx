@@ -731,6 +731,9 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
           ref={overlayRef}
           className="absolute inset-0 h-full w-full"
           style={{
+            // lightweight-charts paints its canvases at z-index 1 & 2, so the
+            // drawing layer must sit above them to capture clicks and stay visible.
+            zIndex: 15,
             pointerEvents: drawTool === 'none' ? 'none' : 'auto',
             cursor: drawTool === 'none' ? 'default' : 'crosshair',
           }}

@@ -65,6 +65,11 @@ const ha = await engine.heikinAshi(candles); // Candle[] (same shape as input)
 
 ## Notes / caveats
 
+- **Overlay stacking.** lightweight-charts paints its canvases at `z-index` 1 &
+  2, so the interactive SVG overlays must sit above them: the drawing layer uses
+  `z-index: 15` and the Measure overlay `z-index: 20`. Without this the canvas
+  swallows every pointer event and the tools appear "dead".
+
 - **All math stays in Rust.** Heikin-Ashi is `core/src/indicators.rs::heikin_ashi`,
   exposed through `lib.rs` as `heikin_ashi` and surfaced as `engine.heikinAshi`.
   Rebuild the WASM bundle (`pnpm --dir web wasm`) after editing the core.

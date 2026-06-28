@@ -76,7 +76,7 @@ pnpm --dir web test
 ```
 
 Expected totals (current): **core** 30+ tests, **data** 5 tests + 1 doctest,
-**desktop** 4 tests, **frontend** 130 tests.
+**desktop** 4 tests, **frontend** 131 tests.
 
 ---
 
@@ -286,6 +286,8 @@ modules are mocked with `vi.mock` in the store and component tests.
   and elapsed time; singularises a one-bar span and omits time when out of range.
 - The overlay is inert (`pointer-events: none`) when inactive and captures input
   when active; `Escape` and right-click both dismiss it via `onComplete`.
+- The overlay renders at `z-index > 2` so it sits above lightweight-charts'
+  canvases and actually receives pointer input (regression guard).
 
 [web/src/components/\_\_tests\_\_/ChartContextMenu.test.tsx](../web/src/components/__tests__/ChartContextMenu.test.tsx)
 - Renders its menu items and positions itself at the given x/y coordinates.

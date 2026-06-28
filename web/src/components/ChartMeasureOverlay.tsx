@@ -250,6 +250,9 @@ export function ChartMeasureOverlay({ chart, series, candles, active, onComplete
       data-active={active ? 'true' : 'false'}
       className="absolute inset-0 h-full w-full"
       style={{
+        // lightweight-charts paints its canvases at z-index 1 & 2, so the
+        // overlay must sit above them (and the z-10 legend) to receive input.
+        zIndex: 20,
         pointerEvents: active ? 'auto' : 'none',
         cursor: active ? 'crosshair' : 'default',
       }}

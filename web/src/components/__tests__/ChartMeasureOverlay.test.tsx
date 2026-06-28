@@ -90,6 +90,15 @@ describe('ChartMeasureOverlay', () => {
     expect(svg).toHaveStyle({ pointerEvents: 'auto' });
   });
 
+  it('renders above the chart canvases (z-index > 2) so it can receive input', () => {
+    // lightweight-charts paints its canvases at z-index 1 & 2; the overlay must
+    // sit above them or the canvas swallows every pointer event (regression).
+    const { chart, series } = makeFakeChart();
+    render(<ChartMeasureOverlay chart={chart} series={series} candles={makeCandles(20)} active />);
+    const z = Number(screen.getByTestId('chart-measure').style.zIndex);
+    expect(z).toBeGreaterThan(2);
+  });
+
   it('Escape dismisses the tool via onComplete', () => {
     const onComplete = vi.fn();
     const { chart, series } = makeFakeChart();
