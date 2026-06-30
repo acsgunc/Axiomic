@@ -298,11 +298,25 @@ export function CandleChart({ candles, indicators, symbol = '', timeframe = 'ALL
     setRenderTick((t) => t + 1);
   }, [displayCandles]);
 
-  // Reset the visible window whenever the data or selected timeframe changes so
-  // the most recent bars are shown at a readable width by default.
+  // Reset the visible window whenever the symbol or selected timeframe changes
+  // so the most recent bars are shown at a readable width by default.
+  //
+  // `timeframe`/`symbol` change one render *before* the resampled candles reach
+  // `displayCandles` (the data flows through an async `setDisplayCandles`
+  // effect). Calling `applyDefaultView()` directly on a `timeframe` change would
+  // therefore run against stale candles (wrong length) and leave the view
+  // pointing into the middle of the new series. Instead we flag a pending reset
+  // here and perform it only once the new data has been committed below.
+  const pendingResetRef = useRef(true);
   useEffect(() => {
+    pendingResetRef.current = true;
+  }, [timeframe, symbol]);
+
+  useEffect(() => {
+    if (!pendingResetRef.current || replay.active || displayCandles.length === 0) return;
+    pendingResetRef.current = false;
     applyDefaultView();
-  }, [timeframe, applyDefaultView]);
+  }, [displayCandles, applyDefaultView, replay.active]);
 
   // Volume histogram pane (bottom overlay on the main chart).
   useEffect(() => {
