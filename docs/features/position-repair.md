@@ -11,6 +11,8 @@ and the resulting total position value.
 ## Status
 
 - **Added** — 2026-07-01
+- **Changed** — 2026-07-01 — added a **Custom** target-averages mode (enter your
+  own target prices instead of the auto-generated round ladder).
 
 ## How to use
 
@@ -28,6 +30,11 @@ and the resulting total position value.
    - **Cost to Buy** — `units × market price`.
    - **New Position Value** — total invested afterwards (`new qty × target avg`),
      with the new total unit count shown alongside.
+4. **Target averages** can be **Auto** (round values generated for you) or
+   **Custom** — switch to Custom and type your own comma- or space-separated
+   target prices (e.g. `250, 200, 150, 100, 75`). Only values strictly between
+   the market price and your entry price are reachable; any outside that range
+   are skipped with a note.
 
 The DCA formula used for each row is:
 
@@ -62,7 +69,8 @@ that averaging down isn't possible.
 - Units are kept fractional (suitable for crypto/contracts); for whole-share
   instruments round up to guarantee the target average is met.
 - Target averages are generated dynamically from your inputs; pass an explicit
-  `targets` array to `buildRepairLadder` to override them.
+  `targets` array to `buildRepairLadder` to override them. In the UI this is the
+  **Custom** target-averages mode, where you type your own prices.
 - **New Position Value** is the total cost basis (capital deployed), which
   always equals your original cost plus the new **Cost to Buy**.
 - Pairs with [Price Targets](./price-targets.md) (the **Price Tiers** sub-tab),

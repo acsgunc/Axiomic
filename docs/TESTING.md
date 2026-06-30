@@ -76,7 +76,7 @@ pnpm --dir web test
 ```
 
 Expected totals (current): **core** 30+ tests, **data** 5 tests + 1 doctest,
-**desktop** 4 tests, **frontend** 195 tests.
+**desktop** 4 tests, **frontend** 197 tests.
 
 ---
 
@@ -243,8 +243,9 @@ modules are mocked with `vi.mock` in the store and component tests.
 
 [web/src/components/\_\_tests\_\_/PositionRepairPanel.test.tsx](../web/src/components/__tests__/PositionRepairPanel.test.tsx)
 - Renders the default repair ladder for the worked example (units/cost/value),
-  recomputes when inputs change, and shows guidance when the market price is not
-  below entry.
+  recomputes when inputs change, shows guidance when the market price is not
+  below entry, uses user-supplied averages in **Custom** mode, and flags custom
+  targets outside the reachable range.
 
 ### Chart helpers
 

@@ -41,6 +41,10 @@ export function PositionRepairPanel() {
   const [quantity, setQuantity] = useState('2');
   const [market, setMarket] = useState('50');
 
+  // Target averages: auto-generated round values, or a user-supplied list.
+  const [targetMode, setTargetMode] = useState<'auto' | 'custom'>('auto');
+  const [customTargets, setCustomTargets] = useState('250, 200, 150, 100, 75');
+
   const inputs: RepairInputs = useMemo(
     () => ({
       entryPrice: num(entry),
@@ -50,7 +54,23 @@ export function PositionRepairPanel() {
     [entry, quantity, market],
   );
 
-  const rows = useMemo(() => buildRepairLadder(inputs), [inputs]);
+  // Parse the comma/space-separated custom averages into a descending list.
+  const parsedTargets = useMemo(() => {
+    const values = customTargets
+      .split(/[\s,]+/)
+      .map((s) => Number(s))
+      .filter((n) => Number.isFinite(n) && n > 0);
+    return Array.from(new Set(values)).sort((a, b) => b - a);
+  }, [customTargets]);
+
+  const rows = useMemo(
+    () =>
+      buildRepairLadder(
+        inputs,
+        targetMode === 'custom' ? { targets: parsedTargets } : {},
+      ),
+    [inputs, targetMode, parsedTargets],
+  );
 
   const possible = repairIsPossible(inputs.entryPrice, inputs.marketPrice);
   const positionValid =
@@ -124,6 +144,75 @@ export function PositionRepairPanel() {
                 </span>
                 .
               </p>
+            </div>
+          </Panel>
+
+          <Panel title="Target Averages" className="shrink-0">
+            <div className="flex flex-col gap-3">
+              <div className="flex rounded-md border border-base-700 p-0.5">
+                {(
+                  [
+                    ['auto', 'Auto'],
+                    ['custom', 'Custom'],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button
+                    key={id}
+                    onClick={() => setTargetMode(id)}
+                    aria-pressed={targetMode === id}
+                    className={cn(
+                      'flex-1 rounded px-2 py-1 text-xs font-medium transition-colors',
+                      targetMode === id
+                        ? 'bg-accent text-white'
+                        : 'text-slate-300 hover:bg-base-700',
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {targetMode === 'custom' ? (
+                <div className="flex flex-col gap-1">
+                  <label
+                    htmlFor="pr-custom-targets"
+                    className="text-[11px] text-slate-400"
+                  >
+                    Your target averages
+                  </label>
+                  <textarea
+                    id="pr-custom-targets"
+                    rows={2}
+                    value={customTargets}
+                    onChange={(e) => setCustomTargets(e.target.value)}
+                    placeholder="e.g. 250, 200, 150, 100, 75"
+                    className="w-full resize-none rounded-md border border-base-700 bg-base-900 px-2 py-1.5 font-mono text-xs outline-none focus:border-accent"
+                  />
+                  <p className="text-[11px] leading-relaxed text-slate-500">
+                    Comma- or space-separated prices. Only values between the
+                    market price and your entry price can be reached.
+                  </p>
+                  {positionValid &&
+                    parsedTargets.length > 0 &&
+                    rows.length < parsedTargets.length && (
+                      <p className="text-[11px] leading-relaxed text-accent-down">
+                        {parsedTargets.length - rows.length} target
+                        {parsedTargets.length - rows.length === 1
+                          ? ''
+                          : 's'}{' '}
+                        skipped — outside ({formatMoney(inputs.marketPrice)},{' '}
+                        {formatMoney(inputs.entryPrice)}).
+                      </p>
+                    )}
+                </div>
+              ) : (
+                <p className="text-[11px] leading-relaxed text-slate-500">
+                  Round target averages are generated automatically between the
+                  market price and your entry price. Switch to{' '}
+                  <span className="text-slate-300">Custom</span> to enter your
+                  own.
+                </p>
+              )}
             </div>
           </Panel>
         </div>

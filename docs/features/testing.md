@@ -25,7 +25,7 @@ pnpm --dir web test
 pnpm --dir web test:coverage   # optional coverage report → web/coverage/
 ```
 
-Current totals: core 30+ tests, data 5 + 1 doctest, desktop 4, frontend 195.
+Current totals: core 30+ tests, data 5 + 1 doctest, desktop 4, frontend 197.
 
 See the full scenario inventory and troubleshooting in
 [docs/TESTING.md](../TESTING.md).

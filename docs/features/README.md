@@ -16,6 +16,7 @@ Living docs for shipped features and notable fixes. One page per feature area.
 
 ## Changelog
 
+- 2026-07-01 — **Changed** **Position Repair** — added a **Custom** target-averages mode so you can enter your own target prices instead of the auto-generated round ladder (out-of-range values are skipped with a note) ([position-repair](./position-repair.md))
 - 2026-07-01 — **Added** **Position Repair** (average-down) ladder — enter entry price / quantity / market price and get a dynamic table of units to buy now to reach a series of target averages, with cost to buy and new total position value; grouped with Price Tiers under a renamed **Average Down** view ([position-repair](./position-repair.md))
 - 2026-07-01 — **Added** tests for the Position Repair DCA ladder + panel (frontend 195 passed) ([testing](./testing.md))
 - 2026-06-30 — **Added** **Price Targets** tool (new **Targets** view) — a -100%…+500% (5% step) target-price ladder table and a target-price-vs-percentage SVG line chart with a dashed 0% baseline, driven by a manual base price or a resolved stock ticker ([price-targets](./price-targets.md))
