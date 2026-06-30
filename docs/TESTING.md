@@ -36,10 +36,10 @@ desktop/src-tauri/
 web/
   vitest.config.ts         # Vitest config (jsdom env)
   src/test/setup.ts        # global test setup (jest-dom + cleanup)
-  src/lib/__tests__/       # utils, sampleData, dataProvider, gridLayout, priceTargets tests
+  src/lib/__tests__/       # utils, sampleData, dataProvider, gridLayout, priceTargets, positionRepair tests
   src/lib/marketData/__tests__/ # hyperliquid + registry tests
   src/store/__tests__/     # useStore + useDashboardStore tests
-  src/components/__tests__/ # DataLoader + PriceTargetWorkspace component tests
+  src/components/__tests__/ # DataLoader + PriceTargetWorkspace + PositionRepairPanel component tests
   src/components/dashboard/__tests__/ # TickerBar component tests
 ```
 
@@ -76,7 +76,7 @@ pnpm --dir web test
 ```
 
 Expected totals (current): **core** 30+ tests, **data** 5 tests + 1 doctest,
-**desktop** 4 tests, **frontend** 180 tests.
+**desktop** 4 tests, **frontend** 195 tests.
 
 ---
 
@@ -226,6 +226,25 @@ modules are mocked with `vi.mock` in the store and component tests.
 - Renders the default ladder (-100% … +500%); recomputes targets when a manual
   base price is set; resolves a base price from a ticker via the sample-data
   fallback (with the engine, storage, and data provider mocked).
+
+### Position repair (average down)
+
+[web/src/lib/\_\_tests\_\_/positionRepair.test.ts](../web/src/lib/__tests__/positionRepair.test.ts)
+- `repairIsPossible` — true only for a positive market price strictly below a
+  positive entry price.
+- `unitsToAverageDown` — DCA formula matches the worked example, the returned
+  units actually produce the target average when applied, and it returns `null`
+  for targets outside `(market, entry)` or invalid positions.
+- `niceStep` / `buildRepairTargets` — round descending targets strictly inside
+  `(market, entry)`, explicit-targets override (filtering out-of-range values),
+  an even-spacing fallback for narrow gaps, and an empty list when un-repairable.
+- `buildRepairLadder` — per-target units/cost/new value, with new position value
+  always equal to original cost + cost to buy; empty for un-repairable positions.
+
+[web/src/components/\_\_tests\_\_/PositionRepairPanel.test.tsx](../web/src/components/__tests__/PositionRepairPanel.test.tsx)
+- Renders the default repair ladder for the worked example (units/cost/value),
+  recomputes when inputs change, and shows guidance when the market price is not
+  below entry.
 
 ### Chart helpers
 

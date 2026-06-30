@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AnalysisWorkspace } from './components/AnalysisWorkspace';
 import { LiveDashboard } from './components/dashboard/LiveDashboard';
-import { PriceTargetWorkspace } from './components/PriceTargetWorkspace';
+import { AverageDownView } from './components/AverageDownView';
 import { useStore } from './store/useStore';
 import { preloadEngine } from './engine';
 import { cn } from './lib/utils';
@@ -56,7 +56,7 @@ export default function App() {
               [
                 ['live', 'Live Grid'],
                 ['analyse', 'Analyse'],
-                ['targets', 'Targets'],
+                ['targets', 'Average Down'],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -94,7 +94,7 @@ export default function App() {
       ) : view === 'analyse' ? (
         <AnalysisWorkspace />
       ) : (
-        <PriceTargetWorkspace />
+        <AverageDownView />
       )}
     </div>
   );

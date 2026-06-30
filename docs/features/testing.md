@@ -8,8 +8,8 @@ frontend (Vitest + Testing Library) — plus a full how-to-run guide.
 
 ## Status
 
-`Added` — 2026-06-21 · `Updated` — 2026-06-30 (Price Targets ladder/chart-geometry
-+ workspace tests)
+`Added` — 2026-06-21 · `Updated` — 2026-07-01 (Position Repair average-down
+ladder + panel tests)
 
 ## How to use
 
@@ -25,7 +25,7 @@ pnpm --dir web test
 pnpm --dir web test:coverage   # optional coverage report → web/coverage/
 ```
 
-Current totals: core 30+ tests, data 5 + 1 doctest, desktop 4, frontend 180.
+Current totals: core 30+ tests, data 5 + 1 doctest, desktop 4, frontend 195.
 
 See the full scenario inventory and troubleshooting in
 [docs/TESTING.md](../TESTING.md).

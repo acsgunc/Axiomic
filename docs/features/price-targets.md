@@ -15,7 +15,8 @@ plus a line chart of target price vs. percentage change with a dashed **0%
 
 ## How to use
 
-1. Run the app (`pnpm --dir web dev`) and click **Targets** in the top nav.
+1. Run the app (`pnpm --dir web dev`) and open the **Average Down** view, then
+   the **Price Tiers** sub-tab.
 2. Set the base price one of two ways:
    - **Manual** — type a price and click **Set price**.
    - **Ticker** — switch to the Ticker tab, type a symbol (e.g. `AAPL`) and
@@ -47,5 +48,6 @@ The target price for any tier is `base × (1 + percent / 100)`.
   `priceTargets.ts` and is unit-tested directly.
 - Resolving a ticker does **not** change the Analyse view's active symbol; it
   only reads a last price.
-- Capital-to-average-down math (Feature Set 2) builds on these tiers and is a
-  planned follow-up.
+- Capital-to-average-down math (Feature Set 2) builds on these tiers and ships
+  as the **Position Repair** sub-tab — see
+  [position-repair](./position-repair.md).
