@@ -36,10 +36,10 @@ desktop/src-tauri/
 web/
   vitest.config.ts         # Vitest config (jsdom env)
   src/test/setup.ts        # global test setup (jest-dom + cleanup)
-  src/lib/__tests__/       # utils, sampleData, dataProvider, gridLayout tests
+  src/lib/__tests__/       # utils, sampleData, dataProvider, gridLayout, priceTargets tests
   src/lib/marketData/__tests__/ # hyperliquid + registry tests
   src/store/__tests__/     # useStore + useDashboardStore tests
-  src/components/__tests__/ # DataLoader component tests
+  src/components/__tests__/ # DataLoader + PriceTargetWorkspace component tests
   src/components/dashboard/__tests__/ # TickerBar component tests
 ```
 
@@ -76,7 +76,7 @@ pnpm --dir web test
 ```
 
 Expected totals (current): **core** 30+ tests, **data** 5 tests + 1 doctest,
-**desktop** 4 tests, **frontend** 165 tests.
+**desktop** 4 tests, **frontend** 180 tests.
 
 ---
 
@@ -209,6 +209,23 @@ modules are mocked with `vi.mock` in the store and component tests.
 - `resampleCandles` — returns the source unchanged for `1D`/`ALL`, handles empty
   input, collapses dailies into fewer weekly bars, aggregates with first-open /
   last-close / extreme high-low / summed volume, and does not mutate the source.
+
+### Price targets
+
+[web/src/lib/\_\_tests\_\_/priceTargets.test.ts](../web/src/lib/__tests__/priceTargets.test.ts)
+- `targetPrice` — applies `base × (1 + %/100)` (0%, +5%, -25%, +500%, -100%).
+- `buildPriceTargets` — default ladder spans -100%…+500% in 5% steps (121
+  inclusive rows), honours custom min/max/step, keeps percent labels free of
+  float drift, and returns an empty ladder for invalid price/range.
+- `targetChartGeometry` — null for degenerate inputs; maps first/last tiers to
+  the plot corners with X increasing and price inverted; places the 0% baseline
+  at the base-price height (and omits it when 0% is off-range); emits a polyline
+  aligned with the points and X ticks on the requested percentage step.
+
+[web/src/components/\_\_tests\_\_/PriceTargetWorkspace.test.tsx](../web/src/components/__tests__/PriceTargetWorkspace.test.tsx)
+- Renders the default ladder (-100% … +500%); recomputes targets when a manual
+  base price is set; resolves a base price from a ticker via the sample-data
+  fallback (with the engine, storage, and data provider mocked).
 
 ### Chart helpers
 

@@ -4,6 +4,7 @@ Living docs for shipped features and notable fixes. One page per feature area.
 
 ## Features
 
+- [Price Targets](./price-targets.md) — percentage price-target ladder (-100%…+500% / 5%) + target-vs-% line chart with a 0% baseline, from a manual price or ticker
 - [Live Multi-Chart Dashboard](./live-dashboard.md) — configurable 1–8 live chart grid, Hyperliquid crypto + yfinance equities, per-pane symbol/timeframe, flashing tickers, pluggable sources
 - [Feature Guard Hook](./feature-guard-hook.md) — Stop hook enforcing docs + tests for code changes
 - [TradingView-Style Charts](./tradingview-charts.md) — chart types, volume, legend, RSI/MACD panes, drawing tools, PNG export
@@ -14,6 +15,8 @@ Living docs for shipped features and notable fixes. One page per feature area.
 
 ## Changelog
 
+- 2026-06-30 — **Added** **Price Targets** tool (new **Targets** view) — a -100%…+500% (5% step) target-price ladder table and a target-price-vs-percentage SVG line chart with a dashed 0% baseline, driven by a manual base price or a resolved stock ticker ([price-targets](./price-targets.md))
+- 2026-06-30 — **Added** tests for the Price Targets ladder + chart geometry and the Targets workspace (frontend 180 passed) ([testing](./testing.md))
 - 2026-06-29 — **Added** TradingView-style **Table view** (OHLCV data window) on every chart — **Chart / Table / Split** view modes plus a **Full Screen** toggle so the chart and table can be read together; toolbar controls on the analysis chart + context-menu items on every live pane ([tradingview-charts](./tradingview-charts.md), [live-dashboard](./live-dashboard.md))
 - 2026-06-29 — **Added** TradingView-style **Replay** tool on every chart — reveal history bar by bar with play/pause, step, and speed; toolbar button on the analysis chart + context-menu item on every chart/pane ([tradingview-charts](./tradingview-charts.md), [live-dashboard](./live-dashboard.md))
 - 2026-06-28 — **Fixed** the **Measure** tool (and the Trend/H-Line drawing layer) not responding — the SVG overlays now sit above lightweight-charts' `z-index: 2` canvas so they receive pointer input ([tradingview-charts](./tradingview-charts.md), [live-dashboard](./live-dashboard.md))

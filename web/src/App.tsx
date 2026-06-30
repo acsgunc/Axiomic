@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react';
 import { AnalysisWorkspace } from './components/AnalysisWorkspace';
 import { LiveDashboard } from './components/dashboard/LiveDashboard';
+import { PriceTargetWorkspace } from './components/PriceTargetWorkspace';
 import { useStore } from './store/useStore';
 import { preloadEngine } from './engine';
 import { cn } from './lib/utils';
 
-/** Top-level view: live multi-chart dashboard or single-symbol analysis. */
-type View = 'live' | 'analyse';
+/** Top-level view: live dashboard, single-symbol analysis, or price targets. */
+type View = 'live' | 'analyse' | 'targets';
 
 const VIEW_KEY = 'axiomic.view';
 
 function initialView(): View {
   try {
-    return localStorage.getItem(VIEW_KEY) === 'analyse' ? 'analyse' : 'live';
+    const stored = localStorage.getItem(VIEW_KEY);
+    if (stored === 'analyse' || stored === 'targets') return stored;
+    return 'live';
   } catch {
     return 'live';
   }
@@ -53,6 +56,7 @@ export default function App() {
               [
                 ['live', 'Live Grid'],
                 ['analyse', 'Analyse'],
+                ['targets', 'Targets'],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -85,7 +89,13 @@ export default function App() {
         </div>
       </header>
 
-      {view === 'live' ? <LiveDashboard /> : <AnalysisWorkspace />}
+      {view === 'live' ? (
+        <LiveDashboard />
+      ) : view === 'analyse' ? (
+        <AnalysisWorkspace />
+      ) : (
+        <PriceTargetWorkspace />
+      )}
     </div>
   );
 }
