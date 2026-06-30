@@ -11,8 +11,8 @@
 import { useMemo, useState } from 'react';
 import { Panel } from './ui';
 import {
+  averageDirection,
   buildRepairLadder,
-  repairIsPossible,
   type RepairInputs,
 } from '../lib/positionRepair';
 import { cn } from '../lib/utils';
@@ -54,7 +54,7 @@ export function PositionRepairPanel() {
     [entry, quantity, market],
   );
 
-  // Parse the comma/space-separated custom averages into a descending list.
+  // Parse the comma/space-separated custom averages into a unique list.
   const parsedTargets = useMemo(() => {
     const values = customTargets
       .split(/[\s,]+/)
@@ -72,9 +72,9 @@ export function PositionRepairPanel() {
     [inputs, targetMode, parsedTargets],
   );
 
-  const possible = repairIsPossible(inputs.entryPrice, inputs.marketPrice);
+  const direction = averageDirection(inputs.entryPrice, inputs.marketPrice);
   const positionValid =
-    possible && Number.isFinite(inputs.quantity) && inputs.quantity > 0;
+    direction !== null && Number.isFinite(inputs.quantity) && inputs.quantity > 0;
 
   const currentCost = positionValid
     ? inputs.quantity * inputs.entryPrice
@@ -85,6 +85,10 @@ export function PositionRepairPanel() {
   const drawdownPct = positionValid
     ? (inputs.marketPrice / inputs.entryPrice - 1) * 100
     : NaN;
+
+  // Range copy for the reachable target interval, e.g. "(50.00, 300.00)".
+  const lo = Math.min(inputs.marketPrice, inputs.entryPrice);
+  const hi = Math.max(inputs.marketPrice, inputs.entryPrice);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -114,13 +118,26 @@ export function PositionRepairPanel() {
 
               {positionValid ? (
                 <div className="flex flex-col gap-1 rounded-md border border-base-700 bg-base-900/40 px-3 py-2 text-xs">
+                  <div className="mb-1 flex items-center justify-between">
+                    <span className="text-slate-400">Action</span>
+                    <span
+                      className={cn(
+                        'rounded-full px-2 py-0.5 text-[10px] font-semibold',
+                        direction === 'down'
+                          ? 'bg-accent-down/15 text-accent-down'
+                          : 'bg-accent-up/15 text-accent-up',
+                      )}
+                    >
+                      {direction === 'down' ? 'Averaging down' : 'Averaging up'}
+                    </span>
+                  </div>
                   <Row label="Cost basis" value={formatMoney(currentCost)} />
                   <Row
                     label="Market value"
                     value={formatMoney(currentValue)}
                   />
                   <Row
-                    label="Unrealised"
+                    label={direction === 'down' ? 'Unrealised' : 'Gain'}
                     value={`${drawdownPct > 0 ? '+' : ''}${drawdownPct.toFixed(1)}%`}
                     valueClass={
                       drawdownPct < 0 ? 'text-accent-down' : 'text-accent-up'
@@ -129,10 +146,10 @@ export function PositionRepairPanel() {
                 </div>
               ) : (
                 <p className="text-[11px] leading-relaxed text-accent-down">
-                  {inputs.marketPrice >= inputs.entryPrice &&
-                  inputs.marketPrice > 0 &&
-                  inputs.entryPrice > 0
-                    ? 'Market price must be below the entry price to average down.'
+                  {inputs.marketPrice > 0 &&
+                  inputs.entryPrice > 0 &&
+                  inputs.marketPrice === inputs.entryPrice
+                    ? 'Market price equals your entry — nothing to average toward.'
                     : 'Enter a positive entry price, quantity, and market price.'}
                 </p>
               )}
@@ -142,7 +159,10 @@ export function PositionRepairPanel() {
                 <span className="font-mono">
                   qty × (target − entry) / (market − target)
                 </span>
-                .
+                . Works to average{' '}
+                <span className="text-accent-down">down</span> (market below
+                entry) or <span className="text-accent-up">up</span> (market
+                above entry).
               </p>
             </div>
           </Panel>
@@ -200,8 +220,8 @@ export function PositionRepairPanel() {
                         {parsedTargets.length - rows.length === 1
                           ? ''
                           : 's'}{' '}
-                        skipped — outside ({formatMoney(inputs.marketPrice)},{' '}
-                        {formatMoney(inputs.entryPrice)}).
+                        skipped — outside ({formatMoney(lo)},{' '}
+                        {formatMoney(hi)}).
                       </p>
                     )}
                 </div>
@@ -217,8 +237,13 @@ export function PositionRepairPanel() {
           </Panel>
         </div>
 
-        {/* Right: dynamic repair ladder */}
-        <Panel title="Position Repair · Average Down" className="min-h-0">
+        {/* Right: dynamic averaging ladder */}
+        <Panel
+          title={`Position Repair · ${
+            direction === 'up' ? 'Average Up' : 'Average Down'
+          }`}
+          className="min-h-0"
+        >
           {rows.length ? (
             <table className="w-full border-collapse text-right text-xs">
               <thead className="sticky top-0 bg-base-800/95 text-slate-400">
@@ -263,9 +288,9 @@ export function PositionRepairPanel() {
               </tbody>
             </table>
           ) : (
-            <div className="flex h-full items-center justify-center text-sm text-slate-500">
-              Enter a position with a market price below your entry to see the
-              repair ladder.
+            <div className="flex h-full items-center justify-center px-6 text-center text-sm text-slate-500">
+              Enter a position with a market price different from your entry to
+              see the averaging ladder.
             </div>
           )}
         </Panel>

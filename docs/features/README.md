@@ -4,7 +4,7 @@ Living docs for shipped features and notable fixes. One page per feature area.
 
 ## Features
 
-- [Position Repair](./position-repair.md) — average-down ladder: units to buy now to pull a losing position's average to a series of targets, with cost + new position value
+- [Position Repair](./position-repair.md) — average-down **and up** ladder: units to buy now to move a position's average to a series of targets, with cost + new position value
 - [Price Targets](./price-targets.md) — percentage price-target ladder (-100%…+500% / 5%) + target-vs-% line chart with a 0% baseline, from a manual price or ticker
 - [Live Multi-Chart Dashboard](./live-dashboard.md) — configurable 1–8 live chart grid, Hyperliquid crypto + yfinance equities, per-pane symbol/timeframe, flashing tickers, pluggable sources
 - [Feature Guard Hook](./feature-guard-hook.md) — Stop hook enforcing docs + tests for code changes
@@ -16,6 +16,7 @@ Living docs for shipped features and notable fixes. One page per feature area.
 
 ## Changelog
 
+- 2026-07-01 — **Changed** **Position Repair** — added **averaging up** (market price above entry, to lift a winner's cost basis); the tool auto-detects the direction, labels it, and switches the table between **Average Down** and **Average Up** ([position-repair](./position-repair.md))
 - 2026-07-01 — **Changed** **Position Repair** — added a **Custom** target-averages mode so you can enter your own target prices instead of the auto-generated round ladder (out-of-range values are skipped with a note) ([position-repair](./position-repair.md))
 - 2026-07-01 — **Added** **Position Repair** (average-down) ladder — enter entry price / quantity / market price and get a dynamic table of units to buy now to reach a series of target averages, with cost to buy and new total position value; grouped with Price Tiers under a renamed **Average Down** view ([position-repair](./position-repair.md))
 - 2026-07-01 — **Added** tests for the Position Repair DCA ladder + panel (frontend 195 passed) ([testing](./testing.md))

@@ -76,7 +76,7 @@ pnpm --dir web test
 ```
 
 Expected totals (current): **core** 30+ tests, **data** 5 tests + 1 doctest,
-**desktop** 4 tests, **frontend** 197 tests.
+**desktop** 4 tests, **frontend** 202 tests.
 
 ---
 
@@ -227,25 +227,29 @@ modules are mocked with `vi.mock` in the store and component tests.
   base price is set; resolves a base price from a ticker via the sample-data
   fallback (with the engine, storage, and data provider mocked).
 
-### Position repair (average down)
+### Position repair (average down / up)
 
 [web/src/lib/\_\_tests\_\_/positionRepair.test.ts](../web/src/lib/__tests__/positionRepair.test.ts)
-- `repairIsPossible` — true only for a positive market price strictly below a
-  positive entry price.
-- `unitsToAverageDown` — DCA formula matches the worked example, the returned
-  units actually produce the target average when applied, and it returns `null`
-  for targets outside `(market, entry)` or invalid positions.
-- `niceStep` / `buildRepairTargets` — round descending targets strictly inside
-  `(market, entry)`, explicit-targets override (filtering out-of-range values),
-  an even-spacing fallback for narrow gaps, and an empty list when un-repairable.
-- `buildRepairLadder` — per-target units/cost/new value, with new position value
-  always equal to original cost + cost to buy; empty for un-repairable positions.
+- `averageDirection` / `repairIsPossible` — detect `down` (market below entry),
+  `up` (market above entry), and the impossible cases (equal or non-positive).
+- `unitsToTargetAverage` — DCA formula matches the worked examples averaging both
+  down and up, the returned units actually produce the target average when
+  applied, and it returns `null` for targets outside `(market, entry)` or invalid
+  positions.
+- `niceStep` / `buildRepairTargets` — round descending targets when averaging
+  down and ascending targets when averaging up (both strictly inside
+  `(market, entry)`), explicit-targets override (filtering out-of-range values),
+  an even-spacing fallback for narrow gaps, and an empty list when un-averageable.
+- `buildRepairLadder` — per-target units/cost/new value in both directions, with
+  new position value always equal to original cost + cost to buy; empty for
+  un-averageable positions.
 
 [web/src/components/\_\_tests\_\_/PositionRepairPanel.test.tsx](../web/src/components/__tests__/PositionRepairPanel.test.tsx)
 - Renders the default repair ladder for the worked example (units/cost/value),
-  recomputes when inputs change, shows guidance when the market price is not
-  below entry, uses user-supplied averages in **Custom** mode, and flags custom
-  targets outside the reachable range.
+  recomputes when inputs change, averages **up** with an ascending ladder when
+  the market price is above entry, shows guidance when the market equals entry,
+  uses user-supplied averages in **Custom** mode, and flags custom targets
+  outside the reachable range.
 
 ### Chart helpers
 

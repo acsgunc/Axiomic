@@ -33,16 +33,36 @@ describe('PositionRepairPanel', () => {
     expect(within(table).queryByText('250.00')).not.toBeInTheDocument();
   });
 
-  it('shows a guidance message when the market price is not below entry', () => {
+  it('averages up when the market price is above entry', () => {
+    render(<PositionRepairPanel />);
+    // entry 300, qty 2, market 600 → ascending targets strictly in (300, 600).
+    fireEvent.change(screen.getByLabelText('Current market price'), {
+      target: { value: '600' },
+    });
+    expect(screen.getByText('Averaging up')).toBeInTheDocument();
+    expect(
+      screen.getByText('Position Repair · Average Up'),
+    ).toBeInTheDocument();
+    const table = screen.getByRole('table');
+    const targets = within(table)
+      .getAllByRole('row')
+      .slice(1)
+      .map((r) => Number(r.querySelector('td')!.textContent!.replace(/,/g, '')));
+    expect(targets.length).toBeGreaterThan(0);
+    expect(targets).toEqual([...targets].sort((a, b) => a - b)); // ascending
+    expect(targets.every((t) => t > 300 && t < 600)).toBe(true);
+  });
+
+  it('shows guidance when the market price equals the entry price', () => {
     render(<PositionRepairPanel />);
     fireEvent.change(screen.getByLabelText('Current market price'), {
-      target: { value: '350' },
+      target: { value: '300' },
     });
     expect(
-      screen.getByText(/must be below the entry price/i),
+      screen.getByText(/nothing to average toward/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/repair ladder/i),
+      screen.getByText(/averaging ladder/i),
     ).toBeInTheDocument(); // empty-state hint
   });
 
