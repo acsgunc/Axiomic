@@ -1,0 +1,4 @@
+# SPA fallback for Cloudflare Pages / Netlify: serve index.html (HTTP 200) for
+# any path that doesn't match a static asset, so deep links and PWA navigation
+# work. Real files (JS/CSS/WASM/PWA manifest) are served before this rule.
+/*    /index.html    200

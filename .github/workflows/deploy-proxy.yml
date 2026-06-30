@@ -1,0 +1,49 @@
+# Deploy the optional live-data proxy (Cloudflare Worker).
+#
+# The proxy is OPTIONAL — Axiomic works fully offline with CSV upload + sample
+# data. Deploy it only if you want in-browser live quotes (Yahoo Finance, free,
+# no API key). Runs only when files under proxy/ change.
+#
+# Required repository secrets:
+#   CLOUDFLARE_API_TOKEN   — token with "Workers Scripts: Edit"
+#   CLOUDFLARE_ACCOUNT_ID  — your Cloudflare account ID
+name: Deploy Proxy (Cloudflare Worker)
+
+on:
+  push:
+    branches: [main]
+    paths: ['proxy/**', '.github/workflows/deploy-proxy.yml']
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-proxy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install proxy dependencies
+        working-directory: proxy
+        run: pnpm install
+
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: proxy
+          command: deploy

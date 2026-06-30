@@ -1,0 +1,24 @@
+# HTTP headers for static hosts that read a `_headers` file
+# (Cloudflare Pages and Netlify). Vite copies this file from web/public/
+# verbatim into web/dist/ at build time.
+#
+# Cross-origin isolation unlocks SharedArrayBuffer / WASM threads for parallel
+# backtests. The app still runs single-threaded without these, but enabling
+# them is free and future-proofs parallelism.
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Resource-Policy: same-origin
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# Content-hashed build assets never change — cache them aggressively.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The service worker and its registration shim must always be revalidated so
+# clients pick up new deployments promptly.
+/sw.js
+  Cache-Control: no-cache
+/registerSW.js
+  Cache-Control: no-cache

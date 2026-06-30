@@ -178,6 +178,11 @@ The backend also exposes the shared engine over IPC (`run_backtest`,
 
 ## Deploy the PWA to the cloud
 
+> **Full guide:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — free-tier comparison
+> (Cloudflare Pages recommended), step-by-step for Cloudflare / Vercel / Netlify,
+> GitHub Actions CI, custom domains, and troubleshooting. The repo ships drop-in
+> config for all three hosts.
+
 The build output in `web/dist` is fully static and can be hosted anywhere.
 
 > **Important:** for WASM threads (`SharedArrayBuffer`) the host **must** send

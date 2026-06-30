@@ -1,0 +1,35 @@
+# Netlify configuration for the Axiomic PWA.
+# Run `netlify deploy` from the `web/` directory (or set base = "web" if
+# deploying from the repo root). Netlify also honours web/public/_headers and
+# web/public/_redirects, which are copied into dist/ at build time — this file
+# documents the build and duplicates the critical headers for clarity.
+
+[build]
+  command = "pnpm wasm && pnpm build"
+  publish = "dist"
+
+[build.environment]
+  # Rust toolchain + wasm-pack are required to build the WASM core. Netlify's
+  # build image includes Rust; install wasm-pack on demand in the command if
+  # the default image lacks it:
+  #   command = "cargo install wasm-pack && pnpm wasm && pnpm build"
+  NODE_VERSION = "20"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Embedder-Policy = "require-corp"
+    Cross-Origin-Resource-Policy = "same-origin"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

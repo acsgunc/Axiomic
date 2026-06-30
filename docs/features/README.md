@@ -13,9 +13,11 @@ Living docs for shipped features and notable fixes. One page per feature area.
 - [Test Suite](./testing.md) — backend + frontend tests and how to run them
 - [Loading Live Data in the App](./live-data.md) — enable and use the in-app live fetch
 - [Market Data Fetching](./market-data.md) — pluggable Yahoo Finance backends behind one trait
+- [Free Cloud Deployment](./deployment.md) — host the PWA free (Cloudflare Pages / Vercel / Netlify) with drop-in configs + CI; full guide in [docs/DEPLOYMENT.md](../DEPLOYMENT.md)
 
 ## Changelog
 
+- 2026-07-01 — **Added** **Free Cloud Deployment** — drop-in host config (Cloudflare Pages `_headers`/`_redirects`, `vercel.json`, `netlify.toml`), two GitHub Actions deploy workflows (Pages + proxy), and a comprehensive [deployment guide](../DEPLOYMENT.md) with a free-tier comparison (Cloudflare recommended) and COOP/COEP setup ([deployment](./deployment.md))
 - 2026-07-01 — **Changed** **Position Repair** — added **averaging up** (market price above entry, to lift a winner's cost basis); the tool auto-detects the direction, labels it, and switches the table between **Average Down** and **Average Up** ([position-repair](./position-repair.md))
 - 2026-07-01 — **Changed** **Position Repair** — added a **Custom** target-averages mode so you can enter your own target prices instead of the auto-generated round ladder (out-of-range values are skipped with a note) ([position-repair](./position-repair.md))
 - 2026-07-01 — **Added** **Position Repair** (average-down) ladder — enter entry price / quantity / market price and get a dynamic table of units to buy now to reach a series of target averages, with cost to buy and new total position value; grouped with Price Tiers under a renamed **Average Down** view ([position-repair](./position-repair.md))

@@ -1,0 +1,82 @@
+# Build the Rust→WASM core + React PWA and deploy it to Cloudflare Pages.
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN   — token with the "Cloudflare Pages: Edit" permission
+#   CLOUDFLARE_ACCOUNT_ID  — your Cloudflare account ID
+#
+# Create the Pages project once (any of these works):
+#   - first `wrangler pages deploy` auto-creates it, or
+#   - Cloudflare dashboard → Workers & Pages → Create → Pages
+# and make sure the project name matches `projectName` below.
+name: Deploy PWA (Cloudflare Pages)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+# Avoid overlapping deploys racing each other.
+concurrency:
+  group: deploy-pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install Rust (wasm32 target)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo + wasm build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            core/target
+          key: ${{ runner.os }}-wasm-${{ hashFiles('core/Cargo.toml', 'core/src/**') }}
+          restore-keys: ${{ runner.os }}-wasm-
+
+      - name: Install wasm-pack
+        uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: latest
+
+      - name: Install web dependencies
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+
+      - name: Build WASM core
+        working-directory: web
+        run: pnpm wasm
+
+      - name: Build PWA
+        working-directory: web
+        run: pnpm build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy web/dist --project-name=axiomic --branch=main
